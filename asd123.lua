@@ -8,6 +8,7 @@ local getRemote = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Remotes
 local webhookUrl = "https://discord.com/api/webhooks/1398304025295982764/26dqhyvUrJlNDNuyQ3QG-dzFeSqJ-hXIp1HPUalE3h-7JrdhtcoWjERoMhiz0FhHcjSE"
 local minDelay = 0.05 -- Minimum wait time (seconds)
 local maxDelay = 3.00 -- Maximum wait time (seconds)
+local statusInterval = 600 -- Time between status pings (600 seconds = 10 mins)
 
 -- 🎯 TARGET FAMILIES 🎯
 local targetFamilies = {
@@ -19,18 +20,6 @@ local targetFamilies = {
     ["Ackerman"] = true,
     ["Reiss"] = true,
     ["Yeager"] = true,
-    
-    -- 🧪 COMMON FAMILIES (TESTING WEBHOOK) 🧪
-    ["Reeves"] = true,
-    ["Blouse"] = true,
-    ["Inocenio"] = true,
-    ["Munsell"] = true,
-    ["Boyega"] = true,
-    ["Ral"] = true,
-    ["Bozado"] = true,
-    ["Pikale"] = true,
-    ["Hume"] = true,
-    ["Iglehaut"] = true,
 }
 
 -- 🛡️ ANTI-AFK 🛡️
@@ -41,13 +30,12 @@ Players.LocalPlayer.Idled:Connect(function()
     VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
--- 🔔 WEBHOOK FUNCTION 🔔
-local function sendDiscordWebhook(spins, family)
+-- 🔔 WEBHOOK FUNCTIONS 🔔
+local function sendTargetWebhook(spins, family)
     local data = {
         ["content"] = "🚨 **AOT:R AUTO-ROLL ALERT** 🚨\n\n🎯 **Target Found:** `" .. family .. "`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
     }
-    
-    local success, err = pcall(function()
+    pcall(function()
         request({
             Url = webhookUrl,
             Method = "POST",
@@ -55,14 +43,27 @@ local function sendDiscordWebhook(spins, family)
             Body = HttpService:JSONEncode(data)
         })
     end)
-    
-    if not success then
-        warn("Webhook failed! Error: ", err)
-    end
+end
+
+local function sendStatusWebhook(spins)
+    local data = {
+        ["content"] = "🟢 **STATUS UPDATE** 🟢\n\n✅ **Status:** `Active & Rolling`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
+    }
+    pcall(function()
+        request({
+            Url = webhookUrl,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = HttpService:JSONEncode(data)
+        })
+    end)
+    print("Sent 10-minute status update to Discord.")
 end
 
 -- 🚀 MAIN AUTO-ROLL LOOP 🚀
-print("--- ⚡ [AOT:R] TEST-MODE INJECTED ⚡ ---")
+print("--- ⚡ [AOT:R] PREMIUM CLONE INJECTED ⚡ ---")
+
+local lastStatusTime = tick()
 
 while true do
     local success, spinsLeft, familyName = pcall(function()
@@ -72,7 +73,7 @@ while true do
     if success and familyName then
         if targetFamilies[familyName] then
             print("!!! 🏆 TARGET FOUND: " .. familyName .. " 🏆 !!!")
-            sendDiscordWebhook(tostring(spinsLeft), tostring(familyName))
+            sendTargetWebhook(tostring(spinsLeft), tostring(familyName))
             break
         else
             print(tostring(familyName) .. " is not selected | Spinning...")
@@ -82,6 +83,13 @@ while true do
             print("❌ Out of spins! Stopping script.")
             break
         end
+
+        -- ⏱️ 10-MINUTE STATUS CHECK ⏱️
+        if tick() - lastStatusTime >= statusInterval then
+            sendStatusWebhook(tostring(spinsLeft))
+            lastStatusTime = tick() -- Reset the timer
+        end
+
     else
         warn("⚠️ Roll request failed. Retrying...")
     end
