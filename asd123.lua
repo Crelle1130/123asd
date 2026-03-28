@@ -110,6 +110,8 @@ while true do
     local randomWait = math.random(minDelay * 100, maxDelay * 100) / 100
     task.wait(randomWait)
 end
+    task.wait(randomWait)
+end
     local randomWait = math.random(minDelay * 100, maxDelay * 100) / 100
     task.wait(randomWait)
 end
