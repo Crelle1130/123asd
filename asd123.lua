@@ -1,27 +1,25 @@
-local HttpService = game:GetService("HttpService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
 local Players = game:GetService("Players")
-local VirtualUser = game:GetService("VirtualUser")
 
-local player = Players.LocalPlayer
-local rollRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("Family"):WaitForChild("Roll")
+local getRemote = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Remotes"):WaitForChild("GET")
 
--- /// CONFIGURATION ///
-local WEBHOOK_URL = "https://discord.com/api/webhooks/1398304025295982764/26dqhyvUrJlNDNuyQ3QG-dzFeSqJ-hXIp1HPUalE3h-7JrdhtcoWjERoMhiz0FhHcjSE" 
-local waitTime = 1.2
+-- ⚙️ CONFIGURATION ⚙️
+local webhookUrl = "https://discord.com/api/webhooks/1398304025295982764/26dqhyvUrJlNDNuyQ3QG-dzFeSqJ-hXIp1HPUalE3h-7JrdhtcoWjERoMhiz0FhHcjSE"
+local waitTime = 1.5 -- Time between rolls
 
--- Target whitelist: Set to true to stop, false to skip.
-local TargetFamilies = {
+-- 🎯 TARGET FAMILIES 🎯
+local targetFamilies = {
     -- MYTHIC
     ["Helos"] = true,
     ["Fritz"] = true,
     
     -- LEGENDARY
     ["Ackerman"] = true,
-    ["Yeager"] = true,
     ["Reiss"] = true,
+    ["Yeager"] = true,
     
-    -- COMMON (ADDED FOR TESTING)
+    -- 🧪 COMMON (FOR TESTING WEBHOOK) 🧪
     ["Reeves"] = true,
     ["Blouse"] = true,
     ["Inocenio"] = true,
@@ -31,86 +29,71 @@ local TargetFamilies = {
     ["Bozado"] = true,
     ["Pikale"] = true,
     ["Hume"] = true,
-    ["Iglehaut"] = true
+    ["Iglehaut"] = true,
 }
 
--- /// ANTI-AFK BYPASS ///
-player.Idled:Connect(function()
-    VirtualUser:CaptureController()
-    VirtualUser:ClickButton2(Vector2.new())
-    print("Anti-AFK engaged: Prevented 20-minute disconnect.")
+-- 🛡️ ANTI-AFK (Prevents 20-minute disconnect) 🛡️
+local VirtualUser = game:GetService("VirtualUser")
+Players.LocalPlayer.Idled:Connect(function()
+    VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    task.wait(1)
+    VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
+    print("[Anti-AFK] Kept connection alive.")
 end)
 
--- Executor HTTP request detection
-local httprequest = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
-local spinCount = 0 
-local consecutiveFails = 0
-
--- Dynamic Webhook Function
-local function sendWebhook(title, alertMessage, familyName, rarity, spins, hexColor)
-    if not httprequest then return end
-
-    local fields = {
-        { ["name"] = "Account", ["value"] = player.Name, ["inline"] = false }
+-- 🔔 WEBHOOK FUNCTION 🔔
+local function sendDiscordWebhook(spins, family)
+    local data = {
+        ["content"] = "🚨 **AOT:R AUTO-ROLL ALERT** 🚨\n\n🎯 **Target Found:** `" .. family .. "`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
     }
-
-    if familyName and rarity then
-        table.insert(fields, { ["name"] = "Family Rolled", ["value"] = familyName, ["inline"] = true })
-        table.insert(fields, { ["name"] = "Rarity", ["value"] = rarity, ["inline"] = true })
-    end
     
-    table.insert(fields, { ["name"] = "Total Spins Used", ["value"] = tostring(spins), ["inline"] = false })
-
-    local payload = {
-        ["content"] = "@everyone " .. alertMessage,
-        ["embeds"] = {{
-            ["title"] = title,
-            ["color"] = tonumber(hexColor),
-            ["fields"] = fields
-        }}
-    }
-
-    local jsonData = HttpService:JSONEncode(payload)
-    httprequest({ 
-        Url = WEBHOOK_URL, 
-        Method = "POST", 
-        Headers = { ["Content-Type"] = "application/json" }, 
-        Body = jsonData 
-    })
+    local success, err = pcall(function()
+        request({
+            Url = webhookUrl,
+            Method = "POST",
+            Headers = { ["Content-Type"] = "application/json" },
+            Body = HttpService:JSONEncode(data)
+        })
+    end)
+    
+    if not success then
+        warn("Webhook failed to send! Error: ", err)
+    else
+        print("Webhook sent to Discord successfully!")
+    end
 end
 
-print("--- [AOT:R] BULLETPROOF WEBHOOK FARMING SCRIPT ACTIVE (TEST MODE) ---")
+-- 🚀 MAIN AUTO-ROLL LOOP 🚀
+print("--- ⚔️ [AOT:R] AUTO-ROLL STARTED ⚔️ ---")
+print("Targeting: Legendary, Mythic, AND Commons (Test Mode)")
+print("Note: The UI will NOT update while rolling. Check F9 for progress.")
 
 while true do
-    local success, data = pcall(function()
-        return rollRemote:InvokeServer()
+    -- Fire the master remote
+    local success, spinsLeft, familyName = pcall(function()
+        return getRemote:InvokeServer("Family", "Roll")
     end)
 
-    if success and type(data) == "table" and data.Name then
-        spinCount = spinCount + 1
-        consecutiveFails = 0 
+    if success and familyName then
+        print("Rolled: " .. tostring(familyName) .. " | Spins Left: " .. tostring(spinsLeft))
         
-        local name = data.Name or "Unknown"
-        local rarity = data.Rarity or "Unknown"
-
-        print(string.format("Roll %d | Family: %s | Rarity: %s", spinCount, name, rarity))
-
-        -- /// THE NEW DOUBLE-CHECK LOGIC ///
-        if TargetFamilies[name] or rarity == "Mythic" or rarity == "Legendary" then
-            print("!!! JACKPOT FOUND: " .. name .. " (" .. rarity .. ") !!! After " .. spinCount .. " spins!")
-            sendWebhook("AoT:R Target Acquired", "🚨 **Target Snipe Successful!** 🚨", name, rarity, spinCount, 0x00FF00)
-            break 
+        -- Check if we got a target
+        if targetFamilies[familyName] then
+            print("!!! 🏆 TARGET FOUND: " .. familyName .. " 🏆 !!!")
+            sendDiscordWebhook(tostring(spinsLeft), tostring(familyName))
+            break -- Stops the while loop!
         end
-    else
-        consecutiveFails = consecutiveFails + 1
-        warn("Roll failed. Server lagging or out of spins. Attempt: " .. consecutiveFails)
         
-        if consecutiveFails >= 5 then
-            print("Stopping script: Suspected Out of Spins.")
-            sendWebhook("AoT:R Auto-Roll Alert", "⚠️ **Script Stopped: Likely Out of Spins!** ⚠️", nil, nil, spinCount, 0xFF0000)
+        -- Stop if we run out of spins
+        if type(spinsLeft) == "number" and spinsLeft <= 0 then
+            print("❌ Out of spins! Stopping script.")
             break
         end
+    else
+        warn("⚠️ Roll request failed. Retrying...")
     end
 
     task.wait(waitTime)
 end
+
+print("--- 🛑 SCRIPT STOPPED 🛑 ---")
