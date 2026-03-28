@@ -6,7 +6,8 @@ local getRemote = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Remotes
 
 -- ⚙️ CONFIGURATION ⚙️
 local webhookUrl = "https://discord.com/api/webhooks/1398304025295982764/26dqhyvUrJlNDNuyQ3QG-dzFeSqJ-hXIp1HPUalE3h-7JrdhtcoWjERoMhiz0FhHcjSE"
-local waitTime = 1.5 -- Time between rolls
+local minDelay = 0.05 -- Minimum wait time (seconds)
+local maxDelay = 3.00 -- Maximum wait time (seconds)
 
 -- 🎯 TARGET FAMILIES 🎯
 local targetFamilies = {
@@ -19,7 +20,7 @@ local targetFamilies = {
     ["Reiss"] = true,
     ["Yeager"] = true,
     
-    -- 🧪 COMMON (FOR TESTING WEBHOOK) 🧪
+    -- 🧪 COMMON FAMILIES (TESTING WEBHOOK) 🧪
     ["Reeves"] = true,
     ["Blouse"] = true,
     ["Inocenio"] = true,
@@ -32,13 +33,12 @@ local targetFamilies = {
     ["Iglehaut"] = true,
 }
 
--- 🛡️ ANTI-AFK (Prevents 20-minute disconnect) 🛡️
+-- 🛡️ ANTI-AFK 🛡️
 local VirtualUser = game:GetService("VirtualUser")
 Players.LocalPlayer.Idled:Connect(function()
     VirtualUser:Button2Down(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
     task.wait(1)
     VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
-    print("[Anti-AFK] Kept connection alive.")
 end)
 
 -- 🔔 WEBHOOK FUNCTION 🔔
@@ -57,34 +57,27 @@ local function sendDiscordWebhook(spins, family)
     end)
     
     if not success then
-        warn("Webhook failed to send! Error: ", err)
-    else
-        print("Webhook sent to Discord successfully!")
+        warn("Webhook failed! Error: ", err)
     end
 end
 
 -- 🚀 MAIN AUTO-ROLL LOOP 🚀
-print("--- ⚔️ [AOT:R] AUTO-ROLL STARTED ⚔️ ---")
-print("Targeting: Legendary, Mythic, AND Commons (Test Mode)")
-print("Note: The UI will NOT update while rolling. Check F9 for progress.")
+print("--- ⚡ [AOT:R] TEST-MODE INJECTED ⚡ ---")
 
 while true do
-    -- Fire the master remote
     local success, spinsLeft, familyName = pcall(function()
         return getRemote:InvokeServer("Family", "Roll")
     end)
 
     if success and familyName then
-        print("Rolled: " .. tostring(familyName) .. " | Spins Left: " .. tostring(spinsLeft))
-        
-        -- Check if we got a target
         if targetFamilies[familyName] then
             print("!!! 🏆 TARGET FOUND: " .. familyName .. " 🏆 !!!")
             sendDiscordWebhook(tostring(spinsLeft), tostring(familyName))
-            break -- Stops the while loop!
+            break
+        else
+            print(tostring(familyName) .. " is not selected | Spinning...")
         end
         
-        -- Stop if we run out of spins
         if type(spinsLeft) == "number" and spinsLeft <= 0 then
             print("❌ Out of spins! Stopping script.")
             break
@@ -93,7 +86,6 @@ while true do
         warn("⚠️ Roll request failed. Retrying...")
     end
 
-    task.wait(waitTime)
+    local randomWait = math.random(minDelay * 100, maxDelay * 100) / 100
+    task.wait(randomWait)
 end
-
-print("--- 🛑 SCRIPT STOPPED 🛑 ---")
