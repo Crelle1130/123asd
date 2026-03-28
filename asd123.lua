@@ -33,7 +33,8 @@ end)
 -- 🔔 WEBHOOK FUNCTIONS 🔔
 local function sendTargetWebhook(spins, family)
     local data = {
-        ["content"] = "🚨 **AOT:R AUTO-ROLL ALERT** 🚨\n\n🎯 **Target Found:** `" .. family .. "`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
+        -- Added @everyone right here so your phone screams at you
+        ["content"] = "@everyone 🚨 **AOT:R AUTO-ROLL ALERT** 🚨\n\n🎯 **Target Found:** `" .. family .. "`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
     }
     pcall(function()
         request({
@@ -47,6 +48,7 @@ end
 
 local function sendStatusWebhook(spins)
     local data = {
+        -- No ping here, just a silent update!
         ["content"] = "🟢 **STATUS UPDATE** 🟢\n\n✅ **Status:** `Active & Rolling`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
     }
     pcall(function()
