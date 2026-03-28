@@ -6,8 +6,8 @@ local getRemote = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Remotes
 
 -- ⚙️ CONFIGURATION ⚙️
 local webhookUrl = "https://discord.com/api/webhooks/1398304025295982764/26dqhyvUrJlNDNuyQ3QG-dzFeSqJ-hXIp1HPUalE3h-7JrdhtcoWjERoMhiz0FhHcjSE"
-local minDelay = 0.05 -- Minimum wait time (seconds)
-local maxDelay = 3.00 -- Maximum wait time (seconds)
+local minDelay = 1.00 -- Safest minimum delay
+local maxDelay = 3.00 -- Safest maximum delay
 local statusInterval = 600 -- Time between status pings (600 seconds = 10 mins)
 
 -- 🎯 TARGET FAMILIES 🎯
@@ -61,11 +61,12 @@ local function sendStatusWebhook(spins)
 end
 
 -- 🚀 MAIN AUTO-ROLL LOOP 🚀
-print("--- ⚡ [AOT:R] PREMIUM CLONE INJECTED ⚡ ---")
+print("--- ⚡ [AOT:R] SMART-WAIT CLONE INJECTED ⚡ ---")
 
 local lastStatusTime = tick()
 
 while true do
+    -- We use InvokeServer, which natively waits for the server to finish processing before moving on
     local success, spinsLeft, familyName = pcall(function()
         return getRemote:InvokeServer("Family", "Roll")
     end)
@@ -84,16 +85,27 @@ while true do
             break
         end
 
-        -- ⏱️ 10-MINUTE STATUS CHECK ⏱️
-        if tick() - lastStatusTime >= statusInterval then
-            sendStatusWebhook(tostring(spinsLeft))
-            lastStatusTime = tick() -- Reset the timer
-        end
-
+    elseif success and not familyName then
+        -- SMART WAIT: The server accepted the ping but didn't roll. It's on cooldown.
+        warn("⏳ Roll not available yet (Server Cooldown). Waiting to try again...")
+        task.wait(1.5) -- Force a hard wait before trying to ping the server again
+        continue -- Skip the rest of the loop and try rolling again
     else
-        warn("⚠️ Roll request failed. Retrying...")
+        warn("⚠️ Network lag or remote error. Retrying in 2 seconds...")
+        task.wait(2)
+        continue
     end
 
+    -- ⏱️ 10-MINUTE STATUS CHECK ⏱️
+    if tick() - lastStatusTime >= statusInterval then
+        -- Only send status if we still have spins left to avoid spamming nil values
+        if spinsLeft then 
+            sendStatusWebhook(tostring(spinsLeft))
+            lastStatusTime = tick()
+        end
+    end
+
+    -- Random delay between successful rolls to stay stealthy
     local randomWait = math.random(minDelay * 100, maxDelay * 100) / 100
     task.wait(randomWait)
 end
