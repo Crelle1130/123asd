@@ -33,7 +33,8 @@ end)
 -- 🔔 WEBHOOK FUNCTIONS 🔔
 local function sendTargetWebhook(spins, family)
     local data = {
-        ["content"] = "🚨 **AOT:R AUTO-ROLL ALERT** 🚨\n\n🎯 **Target Found:** `" .. family .. "`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
+        -- Added @everyone right here so your phone screams at you
+        ["content"] = "@everyone 🚨 **AOT:R AUTO-ROLL ALERT** 🚨\n\n🎯 **Target Found:** `" .. family .. "`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
     }
     pcall(function()
         request({
@@ -47,7 +48,8 @@ end
 
 local function sendStatusWebhook(spins)
     local data = {
-        ["content"] = "🟢 **STATUS UPDATE** 🟢\n\n✅ **Status:** `Active & Rolling`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
+        -- No ping here, just a silent update!
+        ["content"] = "@everyone 🟢 **STATUS UPDATE** 🟢\n\n✅ **Status:** `Active & Rolling`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
     }
     pcall(function()
         request({
@@ -106,12 +108,6 @@ while true do
     end
 
     -- Random delay between successful rolls to stay stealthy
-    local randomWait = math.random(minDelay * 100, maxDelay * 100) / 100
-    task.wait(randomWait)
-end
-    end
-
-    -- Random delay between successful rolls
     local randomWait = math.random(minDelay * 100, maxDelay * 100) / 100
     task.wait(randomWait)
 end
