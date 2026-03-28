@@ -30,13 +30,18 @@ Players.LocalPlayer.Idled:Connect(function()
     VirtualUser:Button2Up(Vector2.new(0,0), workspace.CurrentCamera.CFrame)
 end)
 
+-- 🛠️ EXECUTOR HTTP DETECTION (FIXES THE NIL ERROR) 🛠️
+local httprequest = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+
 -- 🔔 WEBHOOK FUNCTIONS 🔔
 local function sendTargetWebhook(spins, family)
+    if not httprequest then return end
+    
     local data = {
         ["content"] = "@everyone 🚨 **AOT:R AUTO-ROLL ALERT** 🚨\n\n🎯 **Target Found:** `" .. family .. "`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
     }
     pcall(function()
-        request({
+        httprequest({
             Url = webhookUrl,
             Method = "POST",
             Headers = { ["Content-Type"] = "application/json" },
@@ -46,12 +51,13 @@ local function sendTargetWebhook(spins, family)
 end
 
 local function sendStatusWebhook(spins)
+    if not httprequest then return end
+    
     local data = {
-        -- Added @everyone here per your request!
         ["content"] = "@everyone 🟢 **STATUS UPDATE** 🟢\n\n✅ **Status:** `Active & Rolling`\n🎰 **Spins Remaining:** `" .. spins .. "`\n👤 **Account:** `" .. Players.LocalPlayer.Name .. "`"
     }
     pcall(function()
-        request({
+        httprequest({
             Url = webhookUrl,
             Method = "POST",
             Headers = { ["Content-Type"] = "application/json" },
@@ -62,12 +68,12 @@ local function sendStatusWebhook(spins)
 end
 
 -- 🚀 MAIN AUTO-ROLL LOOP 🚀
-print("--- ⚡ [AOT:R] SMART-WAIT CLONE INJECTED ⚡ ---")
+print("--- ⚡ [AOT:R] TARGETED MASTER REMOTE SCRIPT INJECTED ⚡ ---")
 
 local lastStatusTime = tick()
 
 while true do
-    -- We use InvokeServer, which natively waits for the server to finish processing before moving on
+    -- Sending the specific arguments to the master remote
     local success, spinsLeft, familyName = pcall(function()
         return getRemote:InvokeServer("Family", "Roll")
     end)
@@ -87,10 +93,9 @@ while true do
         end
 
     elseif success and not familyName then
-        -- SMART WAIT: The server accepted the ping but didn't roll. It's on cooldown.
         warn("⏳ Roll not available yet (Server Cooldown). Waiting to try again...")
-        task.wait(1.5) -- Force a hard wait before trying to ping the server again
-        continue -- Skip the rest of the loop and try rolling again
+        task.wait(1.5) 
+        continue 
     else
         warn("⚠️ Network lag or remote error. Retrying in 2 seconds...")
         task.wait(2)
@@ -99,19 +104,13 @@ while true do
 
     -- ⏱️ 10-MINUTE STATUS CHECK ⏱️
     if tick() - lastStatusTime >= statusInterval then
-        -- Only send status if we still have spins left to avoid spamming nil values
         if spinsLeft then 
             sendStatusWebhook(tostring(spinsLeft))
             lastStatusTime = tick()
         end
     end
 
-    -- Random delay between successful rolls to stay stealthy
-    local randomWait = math.random(minDelay * 100, maxDelay * 100) / 100
-    task.wait(randomWait)
-end
-    task.wait(randomWait)
-end
+    -- Random delay between successful rolls
     local randomWait = math.random(minDelay * 100, maxDelay * 100) / 100
     task.wait(randomWait)
 end
