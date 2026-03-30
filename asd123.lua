@@ -17,9 +17,9 @@ local targetFamilies = {
     ["Fritz"] = true,
     
     -- LEGENDARY
-    ["Ackerman"] = true,
-    ["Reiss"] = true,
-    ["Yeager"] = true,
+    ["Ackerman"] = false,
+    ["Reiss"] = false,
+    ["Yeager"] = false,
 }
 
 -- 🛡️ ANTI-AFK 🛡️
