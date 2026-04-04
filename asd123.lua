@@ -5,7 +5,7 @@ local Players = game:GetService("Players")
 local getRemote = ReplicatedStorage:WaitForChild("Assets"):WaitForChild("Remotes"):WaitForChild("GET")
 
 -- ⚙️ CONFIGURATION ⚙️
-local webhookUrl = "https://discord.com/api/webhooks/1398304025295982764/26dqhyvUrJlNDNuyQ3QG-dzFeSqJ-hXIp1HPUalE3h-7JrdhtcoWjERoMhiz0FhHcjSE"
+local webhookUrl = "https://discord.com/api/webhooks/1489938671301033985/rvvUrrztxBFRVCzLhlH76KCyD6CxXtD60ySjIuiKzNhSYjrGOa0mlo7IWIQ0iLip3tH9"
 local minDelay = 1.00 -- Safest minimum delay
 local maxDelay = 3.00 -- Safest maximum delay
 local statusInterval = 600 -- Time between status pings (600 seconds = 10 mins)
