@@ -1542,7 +1542,7 @@ Toggles.AutoStartToggle:OnChanged(function()
 				if #activeMods > 0 then
 					for _, modifier in ipairs(activeMods) do
 						getRemote:InvokeServer("S_Missions", "Modify", modifier)
-						task.wait(0.2)
+						task.wait(0.5)
 					end
 				end
 
