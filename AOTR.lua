@@ -213,6 +213,12 @@ function AutoFarm:Start()
 		-- 		v:Destroy()
 		-- 	end
 		-- end)
+
+		INTERFACE.ChildAdded:Connect(function(v)
+			if getgenv().DeleteDamageText and tonumber(v.Name) then
+				v:Destroy()
+			end
+		end)
 		
 		-- Hash map for faster O(1) lookups
 		local bossNames = {Attack_Titan = true, Armored_Titan = true, Female_Titan = true}
@@ -1373,6 +1379,13 @@ Toggles.DeleteMapToggle:OnChanged(function()
 	DropdownConfig.DeleteMap = getgenv().DeleteMap
 	SaveConfig(DropdownConfig)
 	if getgenv().DeleteMap then DeleteMap() end
+end)
+MainGroup:AddToggle("DeleteDamageTextToggle", {
+	Text = "Delete Damage Text",
+	Default = false,
+})
+Toggles.DeleteDamageTextToggle:OnChanged(function()
+	getgenv().DeleteDamageText = Toggles.DeleteDamageTextToggle.Value
 end)
 MainGroup:AddToggle("SoloOnlyToggle", {
 	Text = "Solo Only",
