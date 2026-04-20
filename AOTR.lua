@@ -1248,6 +1248,7 @@ local Tabs = {
 	Main = Window:AddTab("Main", "house"),
 	Upgrades = Window:AddTab("Upgrades", "trending-up"),
 	Misc = Window:AddTab("Misc", "boxes"),
+	Menu = Window:AddTab("Main Menu", "home"),
 	Settings = Window:AddTab("Settings", "settings"),
 }
 
@@ -1257,8 +1258,8 @@ local AutoStartGroup = Tabs.Main:AddRightGroupbox("Auto Start")
 local UpgradesGroup = Tabs.Upgrades:AddLeftGroupbox("Upgrades")
 local SkillTreeGroup = Tabs.Upgrades:AddRightGroupbox("Skill Tree")
 
-local SlotGroup = Tabs.Misc:AddLeftGroupbox("Slot")
-local FamilyRollGroup = Tabs.Misc:AddRightGroupbox("Family Roll")
+local SlotGroup = Tabs.Menu:AddLeftGroupbox("Slot")
+local FamilyRollGroup = Tabs.Menu:AddRightGroupbox("Family Roll")
 
 local SettingsGroup = Tabs.Misc:AddLeftGroupbox("Settings")
 local WebhookGroup = Tabs.Misc:AddRightGroupbox("Webhook")
@@ -2129,10 +2130,15 @@ Toggles.AutoRollToggle:OnChanged(function()
 			while getgenv().AutoRoll do
 				local targets, rarities
 
-				local text = Options.SelectFamily.Value
-				if text and text ~= "" then
-					text = string.lower(text)
-					targets = string.split(text, ",")
+				local familySelected = Options.SelectFamily.Value
+				if familySelected then
+					targets = {}
+					for familyName, isEnabled in pairs(familySelected) do
+						if isEnabled then
+							table.insert(targets, string.lower(familyName))
+						end
+					end
+					if #targets == 0 then targets = nil end
 				end
 
 				local raritySelected = Options.SelectFamilyRarity.Value
@@ -2152,16 +2158,28 @@ Toggles.AutoRollToggle:OnChanged(function()
 	end
 end)
 
-FamilyRollGroup:AddInput("SelectFamily", {
-	Default = "",
+FamilyRollGroup:AddDropdown("SelectFamily", {
+	Values = {
+		-- Epic
+		"Zoe", "Tybur", "Leonhart", "Galliard", "Finger", "Braun", "Arlert", "Ksaver",
+		-- Legendary
+		"Ackerman", "Yeager", "Reiss",
+		-- Mythical
+		"Fritz", "Helos",
+	},
+	Default = {},
+	Multi = true,
 	Text = "Select Families",
-	Placeholder = "Fritz,Yeager,etc.",
 })
 Options.SelectFamily:OnChanged(function()
-	if Options.SelectFamily.Value ~= "" then
+	local selected = {}
+	for name, isEnabled in pairs(Options.SelectFamily.Value) do
+		if isEnabled then table.insert(selected, name) end
+	end
+	if #selected > 0 then
 		Library:Notify({
 			Title = "Us Suite",
-			Description = "Families selected: " .. Options.SelectFamily.Value,
+			Description = "Families selected: " .. table.concat(selected, ", "),
 			Time = 2
 		})
 	end
@@ -2174,7 +2192,7 @@ FamilyRollGroup:AddDropdown("SelectFamilyRarity", {
 	Text = "Stop At",
 })
 
-FamilyRollGroup:AddLabel("Mythical families won't be rolled\nSeparate families with commas & no spaces (Fritz,Yeager)", true)
+FamilyRollGroup:AddLabel("Mythical families won't be rolled", true)
 
 -- ==========================================
 -- SETTINGS TAB : Webhook & UI Groupbox
@@ -2244,10 +2262,10 @@ task.spawn(function()
 	end
 end)
 
--- Hide Upgrades and Misc tabs when in a mission, show in lobby
--- On main menu (13379208636): only show Misc (Slot + Family Roll), hide Farm groupbox
--- In lobby (14916516914): show Upgrades and Misc, show Farm groupbox
--- In mission: hide Upgrades and Misc, show Farm groupbox
+-- Tab visibility per place
+-- Main menu (13379208636): Only Main Menu tab
+-- Lobby (14916516914): Main, Upgrades, Misc, Settings
+-- Mission: Main, Settings only
 task.spawn(function()
 	local lastState = nil
 	while not Library.Unloaded do
@@ -2257,8 +2275,10 @@ task.spawn(function()
 
 		if lastState ~= placeId then
 			lastState = placeId
+			Tabs.Main:SetVisible(not isMainMenu)
 			Tabs.Upgrades:SetVisible(isLobbyPlace)
-			Tabs.Misc:SetVisible(isLobbyPlace or isMainMenu)
+			Tabs.Misc:SetVisible(isLobbyPlace)
+			Tabs.Menu:SetVisible(isMainMenu)
 			if isMainMenu then
 				MainGroup:Hide()
 				AutoStartGroup:Hide()
