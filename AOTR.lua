@@ -1263,6 +1263,7 @@ local FamilyRollGroup = Tabs.Menu:AddRightGroupbox("Family Roll")
 
 local SettingsGroup = Tabs.Misc:AddLeftGroupbox("Settings")
 local WebhookGroup = Tabs.Misc:AddRightGroupbox("Webhook")
+local PrestigeGroup = Tabs.Misc:AddLeftGroupbox("Prestige")
 
 -- ==========================================
 -- MAIN TAB : Farm Groupbox
@@ -2061,7 +2062,7 @@ Toggles.AutoPlayToggle:OnChanged(function()
 	getgenv().AutoPlay = Toggles.AutoPlayToggle.Value
 end)
 
-SlotGroup:AddToggle("AutoPrestigeToggle", {
+PrestigeGroup:AddToggle("AutoPrestigeToggle", {
 	Text = "Auto Prestige",
 	Default = false,
 })
@@ -2099,14 +2100,14 @@ Toggles.AutoPrestigeToggle:OnChanged(function()
 	end
 end)
 
-SlotGroup:AddDropdown("SelectBoostDropdown", {
+PrestigeGroup:AddDropdown("SelectBoostDropdown", {
 	Values = {"Luck Boost", "EXP Boost", "Gold Boost"},
 	Default = 1,
 	Multi = false,
 	Text = "Select Boost",
 })
 
-SlotGroup:AddSlider("PrestigeGoldSlider", {
+PrestigeGroup:AddSlider("PrestigeGoldSlider", {
 	Text = "Prestige Gold (in millions)",
 	Default = 0,
 	Min = 0,
