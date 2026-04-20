@@ -958,7 +958,7 @@ local function setupAutoExecute()
 		queue_on_teleport([[
 			repeat task.wait() until game:IsLoaded()
 			task.wait(5)
-			loadstring(game:HttpGet("[https://raw.githubusercontent.com/Crelle1130/123asd/refs/heads/main/AOTR-28.lua](https://raw.githubusercontent.com/Crelle1130/123asd/refs/heads/main/Tryaot.lua)", true))()
+			loadstring(game:HttpGet("[https://raw.githubusercontent.com/Crelle1130/123asd/refs/heads/main/AOTR-28.lua](https://raw.githubusercontent.com/Crelle1130/123asd/refs/heads/main/AOTR-28.lua)", true))()
 		]])
 	end
 end
