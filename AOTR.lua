@@ -2030,42 +2030,38 @@ Toggles.AutoSelectSlot:OnChanged(function()
 	if getgenv().AutoSlot then
 		local selectedSlot = Options.SelectSlotDropdown.Value
 		local slotLetter = string.sub(selectedSlot, -1) -- "A", "B", or "C"
+		
 		task.spawn(function()
-			-- Step 1: Click the slot button until slot screen is gone
+			-- Step 1: Use UI clicker, but safely break the loop the second the Slot menu hides
 			repeat
 				local titleScreen = INTERFACE:FindFirstChild("Title_Screen")
-				if titleScreen and titleScreen.Visible then
-					local slots = titleScreen:FindFirstChild("Slots")
-					local slotFolder = slots and slots:FindFirstChild(slotLetter)
+				local slots = titleScreen and titleScreen:FindFirstChild("Slots")
+				
+				if titleScreen and titleScreen.Visible and slots and slots.Visible then
+					local slotFolder = slots:FindFirstChild(slotLetter)
 					local slotButton = slotFolder and slotFolder:FindFirstChild("Select_" .. slotLetter)
 					if slotButton and slotButton.Visible then
 						UseButton(slotButton)
 					end
 				end
 				task.wait(0.5)
-			until not getgenv().AutoSlot or (INTERFACE:FindFirstChild("Title_Screen") and not INTERFACE.Title_Screen.Visible)
+			until not getgenv().AutoSlot or not (INTERFACE:FindFirstChild("Title_Screen") and INTERFACE.Title_Screen:FindFirstChild("Slots") and INTERFACE.Title_Screen.Slots.Visible)
 
-			-- Step 2: Now on main menu, wait for Auto Play
-			if not getgenv().AutoSlot then return end
+			-- Step 2: Stop right here if Auto Play is off (stay on Main Menu for rolling)
+			if not getgenv().AutoSlot or not getgenv().AutoPlay then return end
 
-			if getgenv().AutoPlay then
-				-- Click PLAY button to go to lobby
-				task.wait(0.5)
-				local titleScreen = INTERFACE:FindFirstChild("Title_Screen")
-				local playButton = titleScreen and titleScreen:FindFirstChild("Buttons")
-					and titleScreen.Buttons:FindFirstChild("Play")
-					and titleScreen.Buttons.Play:FindFirstChild("Interact")
-				if playButton then
-					UseButton(playButton)
-					task.wait(2)
-				end
-				-- Start mission
-				getgenv().AutoStart = true
-				pcall(function() Toggles.AutoStartToggle:SetValue(true) end)
-			end
+			-- Step 3: If Auto Play is ON, use the server remote to instantly teleport
+			task.wait(1) 
+			pcall(function()
+				getRemote:InvokeServer("Functions", "Teleport", "Lobby")
+			end)
+			
+			getgenv().AutoStart = true
+			pcall(function() Toggles.AutoStartToggle:SetValue(true) end)
 		end)
 	end
 end)
+
 
 SlotGroup:AddDropdown("SelectSlotDropdown", {
 	Values = {"Slot A", "Slot B", "Slot C"},
