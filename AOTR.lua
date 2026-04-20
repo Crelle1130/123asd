@@ -2031,12 +2031,13 @@ Toggles.AutoSelectSlot:OnChanged(function()
 		local selectedSlot = Options.SelectSlotDropdown.Value
 		local slotLetter = string.sub(selectedSlot, -1) -- "A", "B", or "C"
 		task.spawn(function()
+			-- Step 1: Click the slot button until slot screen is gone
 			repeat
 				local titleScreen = INTERFACE:FindFirstChild("Title_Screen")
 				if titleScreen and titleScreen.Visible then
-					local slotButton = titleScreen:FindFirstChild("Slots")
-						and titleScreen.Slots:FindFirstChild(slotLetter)
-						and titleScreen.Slots[slotLetter]:FindFirstChild("Select_" .. slotLetter)
+					local slots = titleScreen:FindFirstChild("Slots")
+					local slotFolder = slots and slots:FindFirstChild(slotLetter)
+					local slotButton = slotFolder and slotFolder:FindFirstChild("Select_" .. slotLetter)
 					if slotButton and slotButton.Visible then
 						UseButton(slotButton)
 					end
@@ -2044,9 +2045,21 @@ Toggles.AutoSelectSlot:OnChanged(function()
 				task.wait(0.5)
 			until not getgenv().AutoSlot or (INTERFACE:FindFirstChild("Title_Screen") and not INTERFACE.Title_Screen.Visible)
 
-			-- Only start if Auto Play is enabled
+			-- Step 2: Now on main menu, wait for Auto Play
+			if not getgenv().AutoSlot then return end
+
 			if getgenv().AutoPlay then
-				task.wait(1)
+				-- Click PLAY button to go to lobby
+				task.wait(0.5)
+				local titleScreen = INTERFACE:FindFirstChild("Title_Screen")
+				local playButton = titleScreen and titleScreen:FindFirstChild("Buttons")
+					and titleScreen.Buttons:FindFirstChild("Play")
+					and titleScreen.Buttons.Play:FindFirstChild("Interact")
+				if playButton then
+					UseButton(playButton)
+					task.wait(2)
+				end
+				-- Start mission
 				getgenv().AutoStart = true
 				pcall(function() Toggles.AutoStartToggle:SetValue(true) end)
 			end
