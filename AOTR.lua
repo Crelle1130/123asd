@@ -2249,15 +2249,24 @@ end)
 -- In lobby (14916516914): show Upgrades and Misc, show Farm groupbox
 -- In mission: hide Upgrades and Misc, show Farm groupbox
 task.spawn(function()
+	local lastState = nil
 	while not Library.Unloaded do
 		local placeId = game.PlaceId
 		local isMainMenu = placeId == 13379208636
 		local isLobbyPlace = placeId == 14916516914
 
-		Tabs.Upgrades:SetVisible(isLobbyPlace)
-		Tabs.Misc:SetVisible(isLobbyPlace or isMainMenu)
-		MainGroup:SetVisible(not isMainMenu)
-		AutoStartGroup:SetVisible(not isMainMenu)
+		if lastState ~= placeId then
+			lastState = placeId
+			Tabs.Upgrades:SetVisible(isLobbyPlace)
+			Tabs.Misc:SetVisible(isLobbyPlace or isMainMenu)
+			if isMainMenu then
+				MainGroup:Hide()
+				AutoStartGroup:Hide()
+			else
+				MainGroup:Show()
+				AutoStartGroup:Show()
+			end
+		end
 		task.wait(1)
 	end
 end)
