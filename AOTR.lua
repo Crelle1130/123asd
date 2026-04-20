@@ -1084,6 +1084,29 @@ local function roll(targets, rarities)
 				Time = 5,
 			})
 		end)
+
+		if getgenv().AutoDeposit then
+			local success, result = pcall(function()
+				return getRemote:InvokeServer("Family", "Store")
+			end)
+			if success and result then
+				pcall(function()
+					Library:Notify({
+						Title = "Us Suite",
+						Description = "Family deposited! Continuing roll...",
+						Time = 3,
+					})
+				end)
+				getgenv().AutoRoll = true
+				pcall(function()
+					if Library and Library.Toggles and Library.Toggles.AutoRollToggle then
+						Library.Toggles.AutoRollToggle:SetValue(true)
+					end
+				end)
+			end
+			return
+		end
+
 		return
 	end
 
@@ -2084,6 +2107,13 @@ FamilyRollGroup:AddToggle("AutoRollToggle", {
 	Text = "Auto Roll",
 	Default = false,
 })
+FamilyRollGroup:AddToggle("AutoDepositToggle", {
+	Text = "Auto Deposit",
+	Default = false,
+})
+Toggles.AutoDepositToggle:OnChanged(function()
+	getgenv().AutoDeposit = Toggles.AutoDepositToggle.Value
+end)
 Toggles.AutoRollToggle:OnChanged(function()
 	getgenv().AutoRoll = Toggles.AutoRollToggle.Value
 	if getgenv().AutoRoll then
