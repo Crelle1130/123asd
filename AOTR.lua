@@ -1246,12 +1246,13 @@ local Window = Library:CreateWindow({
 
 local Tabs = {
 	Main = Window:AddTab("Lobby", "house"),
+	Mission = Window:AddTab("Mission", "swords"),
 	Misc = Window:AddTab("Misc", "boxes"),
 	Menu = Window:AddTab("Main Menu", "home"),
 	Settings = Window:AddTab("Settings", "settings"),
 }
 
-local MainGroup = Tabs.Main:AddLeftGroupbox("Farm")
+local MainGroup = Tabs.Mission:AddLeftGroupbox("Farm")
 local AutoStartGroup = Tabs.Main:AddRightGroupbox("Auto Start")
 
 local UpgradesGroup = Tabs.Main:AddLeftGroupbox("Upgrades")
@@ -2415,7 +2416,7 @@ end)
 -- Tab visibility per place
 -- Main menu (13379208636): Only Main Menu tab
 -- Lobby (14916516914): Lobby, Misc, Settings
--- Mission: Lobby, Settings only
+-- Mission: Mission, Settings only
 task.spawn(function()
 	local lastState = nil
 	while not Library.Unloaded do
@@ -2425,21 +2426,10 @@ task.spawn(function()
 
 		if lastState ~= placeId then
 			lastState = placeId
-			Tabs.Main:SetVisible(not isMainMenu)
+			Tabs.Main:SetVisible(isLobbyPlace)
+			Tabs.Mission:SetVisible(not isMainMenu and not isLobbyPlace)
 			Tabs.Misc:SetVisible(isLobbyPlace)
 			Tabs.Menu:SetVisible(isMainMenu)
-			if isMainMenu then
-				MainGroup:Hide()
-				AutoStartGroup:Hide()
-			elseif isLobbyPlace then
-				-- In lobby: hide Farm only, keep Auto Start
-				MainGroup:Hide()
-				AutoStartGroup:Show()
-			else
-				-- In mission: show Farm, hide Auto Start
-				MainGroup:Show()
-				AutoStartGroup:Hide()
-			end
 		end
 		task.wait(1)
 	end
