@@ -2214,6 +2214,16 @@ task.spawn(function()
 	end
 end)
 
+-- Hide Upgrades and Misc tabs when in a mission, show in lobby
+task.spawn(function()
+	while not Library.Unloaded do
+		local inLobby = game.PlaceId == 14916516914
+		Tabs.Upgrades:SetVisible(inLobby)
+		Tabs.Misc:SetVisible(inLobby)
+		task.wait(1)
+	end
+end)
+
 -- Anti-AFK
 local virtualUser = game:GetService("VirtualUser")
 lp.Idled:Connect(function()
