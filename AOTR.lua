@@ -2431,9 +2431,14 @@ task.spawn(function()
 			if isMainMenu then
 				MainGroup:Hide()
 				AutoStartGroup:Hide()
-			else
-				MainGroup:Show()
+			elseif isLobbyPlace then
+				-- In lobby: hide Farm only, keep Auto Start
+				MainGroup:Hide()
 				AutoStartGroup:Show()
+			else
+				-- In mission: show Farm, hide Auto Start
+				MainGroup:Show()
+				AutoStartGroup:Hide()
 			end
 		end
 		task.wait(1)
