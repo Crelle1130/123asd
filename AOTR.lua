@@ -2027,18 +2027,25 @@ SlotGroup:AddToggle("AutoSelectSlot", {
 })
 Toggles.AutoSelectSlot:OnChanged(function()
 	getgenv().AutoSlot = Toggles.AutoSelectSlot.Value
-	if getgenv().AutoSlot and not lp:GetAttribute("Slot") then
+	if getgenv().AutoSlot then
 		local selectedSlot = Options.SelectSlotDropdown.Value
-		local args = { "Functions", "Select", string.sub(selectedSlot, -1) }
+		local slotLetter = string.sub(selectedSlot, -1) -- "A", "B", or "C"
 		task.spawn(function()
 			repeat
-				getRemote:InvokeServer(unpack(args))
-				task.wait(1)
-			until lp:GetAttribute("Slot") or not getgenv().AutoSlot
+				local titleScreen = INTERFACE:FindFirstChild("Title_Screen")
+				if titleScreen and titleScreen.Visible then
+					local slotButton = titleScreen:FindFirstChild("Slots")
+						and titleScreen.Slots:FindFirstChild(slotLetter)
+						and titleScreen.Slots[slotLetter]:FindFirstChild("Select_" .. slotLetter)
+					if slotButton and slotButton.Visible then
+						UseButton(slotButton)
+					end
+				end
+				task.wait(0.5)
+			until not getgenv().AutoSlot or (INTERFACE:FindFirstChild("Title_Screen") and not INTERFACE.Title_Screen.Visible)
 
-			-- Only teleport and start if Auto Play is enabled
-			if getgenv().AutoPlay and lp:GetAttribute("Slot") then
-				getRemote:InvokeServer("Functions", "Teleport", "Lobby")
+			-- Only start if Auto Play is enabled
+			if getgenv().AutoPlay then
 				task.wait(1)
 				getgenv().AutoStart = true
 				pcall(function() Toggles.AutoStartToggle:SetValue(true) end)
