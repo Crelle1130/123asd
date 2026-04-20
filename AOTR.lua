@@ -1483,6 +1483,7 @@ Toggles.AutoStartToggle:OnChanged(function()
 							Objective = objective
 						})
 
+						task.wait(0.5)
 						if getMyMission() then
 							Library:Notify({
 								Title = "Auto Start",
@@ -1552,7 +1553,7 @@ Toggles.AutoStartToggle:OnChanged(function()
 								applied = string.find(mods, modifier, 1, true) ~= nil
 							end
 							attempts = attempts + 1
-						until applied or attempts >= 5
+						until applied or attempts >= 10
 					end
 				end
 
