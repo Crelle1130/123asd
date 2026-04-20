@@ -2245,11 +2245,19 @@ task.spawn(function()
 end)
 
 -- Hide Upgrades and Misc tabs when in a mission, show in lobby
+-- On main menu (13379208636): only show Misc (Slot + Family Roll), hide Farm groupbox
+-- In lobby (14916516914): show Upgrades and Misc, show Farm groupbox
+-- In mission: hide Upgrades and Misc, show Farm groupbox
 task.spawn(function()
 	while not Library.Unloaded do
-		local inLobby = game.PlaceId == 14916516914
-		Tabs.Upgrades:SetVisible(inLobby)
-		Tabs.Misc:SetVisible(inLobby)
+		local placeId = game.PlaceId
+		local isMainMenu = placeId == 13379208636
+		local isLobbyPlace = placeId == 14916516914
+
+		Tabs.Upgrades:SetVisible(isLobbyPlace)
+		Tabs.Misc:SetVisible(isLobbyPlace or isMainMenu)
+		MainGroup:SetVisible(not isMainMenu)
+		AutoStartGroup:SetVisible(not isMainMenu)
 		task.wait(1)
 	end
 end)
