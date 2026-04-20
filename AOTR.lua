@@ -2050,11 +2050,17 @@ Toggles.AutoSelectSlot:OnChanged(function()
 			-- Step 2: Stop right here if Auto Play is off (stay on Main Menu for rolling)
 			if not getgenv().AutoSlot or not getgenv().AutoPlay then return end
 
-			-- Step 3: If Auto Play is ON, use the server remote to instantly teleport
-			task.wait(1) 
-			pcall(function()
-				getRemote:InvokeServer("Functions", "Teleport", "Lobby")
-			end)
+			-- Step 3: If Auto Play is ON, use the UI clicker to press the Play button
+			task.wait(0.5)
+			local titleScreen = INTERFACE:FindFirstChild("Title_Screen")
+			local playButton = titleScreen and titleScreen:FindFirstChild("Buttons")
+				and titleScreen.Buttons:FindFirstChild("Play")
+				and titleScreen.Buttons.Play:FindFirstChild("Interact")
+				
+			if playButton then
+				UseButton(playButton)
+				task.wait(2)
+			end
 			
 			getgenv().AutoStart = true
 			pcall(function() Toggles.AutoStartToggle:SetValue(true) end)
