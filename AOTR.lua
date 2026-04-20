@@ -2082,6 +2082,25 @@ SlotGroup:AddToggle("AutoPlayToggle", {
 })
 Toggles.AutoPlayToggle:OnChanged(function()
 	getgenv().AutoPlay = Toggles.AutoPlayToggle.Value
+	if getgenv().AutoPlay then
+		task.spawn(function()
+			while getgenv().AutoPlay do
+				local titleScreen = INTERFACE:FindFirstChild("Title_Screen")
+				if titleScreen and titleScreen.Visible then
+					local playButton = titleScreen:FindFirstChild("Buttons")
+						and titleScreen.Buttons:FindFirstChild("Play")
+						and titleScreen.Buttons.Play:FindFirstChild("Interact")
+					if playButton and playButton.Visible then
+						UseButton(playButton)
+						task.wait(2)
+						getgenv().AutoStart = true
+						pcall(function() Toggles.AutoStartToggle:SetValue(true) end)
+					end
+				end
+				task.wait(0.5)
+			end
+		end)
+	end
 end)
 
 PrestigeGroup:AddToggle("AutoPrestigeToggle", {
