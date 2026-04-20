@@ -1541,8 +1541,18 @@ Toggles.AutoStartToggle:OnChanged(function()
 
 				if #activeMods > 0 then
 					for _, modifier in ipairs(activeMods) do
-						getRemote:InvokeServer("S_Missions", "Modify", modifier)
-						task.wait(0.5)
+						local applied = false
+						local attempts = 0
+						repeat
+							getRemote:InvokeServer("S_Missions", "Modify", modifier)
+							task.wait(0.5)
+							local mission = getMyMission()
+							if mission then
+								local mods = mission:GetAttribute("Modifiers") or ""
+								applied = string.find(mods, modifier, 1, true) ~= nil
+							end
+							attempts = attempts + 1
+						until applied or attempts >= 5
 					end
 				end
 
