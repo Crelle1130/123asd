@@ -2035,7 +2035,13 @@ Toggles.AutoSelectSlot:OnChanged(function()
 				task.wait(1)
 			until lp:GetAttribute("Slot") or not getgenv().AutoSlot
 
-			getRemote:InvokeServer("Functions", "Teleport", "Lobby")
+			-- Only teleport and start if Auto Play is enabled
+			if getgenv().AutoPlay and lp:GetAttribute("Slot") then
+				getRemote:InvokeServer("Functions", "Teleport", "Lobby")
+				task.wait(1)
+				getgenv().AutoStart = true
+				pcall(function() Toggles.AutoStartToggle:SetValue(true) end)
+			end
 		end)
 	end
 end)
@@ -2046,6 +2052,14 @@ SlotGroup:AddDropdown("SelectSlotDropdown", {
 	Multi = false,
 	Text = "Select Slot",
 })
+
+SlotGroup:AddToggle("AutoPlayToggle", {
+	Text = "Auto Play When Slot Met",
+	Default = false,
+})
+Toggles.AutoPlayToggle:OnChanged(function()
+	getgenv().AutoPlay = Toggles.AutoPlayToggle.Value
+end)
 
 SlotGroup:AddToggle("AutoPrestigeToggle", {
 	Text = "Auto Prestige",
@@ -2150,9 +2164,63 @@ Toggles.AutoRollToggle:OnChanged(function()
 						end
 					end
 				end
-				
-				roll(targets, rarities)
-				task.wait(0.25)
+
+				-- Use InvokeServer directly — only rolls when server is ready
+				local success, spinsLeft, familyName = pcall(function()
+					return getRemote:InvokeServer("Family", "Roll")
+				end)
+
+				if not success or not familyName then
+					-- Server on cooldown, retry immediately without delay
+					continue
+				end
+
+				if spinsLeft and spinsLeft <= 0 then
+					getgenv().AutoRoll = false
+					Toggles.AutoRollToggle:SetValue(false)
+					Library:Notify({ Title = "Us Suite", Description = "Out of spins!", Time = 5 })
+					break
+				end
+
+				-- Check against targets and rarities
+				local familyNameLower = string.lower(familyName)
+				local familyString = PlayerGui.Interface.Customisation.Family.Family.Title.Text
+				local familyRarity = string.lower(string.match(familyString, "%((.-)%)") or "")
+
+				local stopRolling = false
+				if targets and table.find(targets, familyNameLower) then stopRolling = true end
+				if rarities and table.find(rarities, familyRarity) then stopRolling = true end
+				if familyRarity == "mythical" then stopRolling = true end
+
+				if stopRolling then
+					getgenv().AutoRoll = false
+					Toggles.AutoRollToggle:SetValue(false)
+
+					if familyRarity == "mythical" and getgenv().MythicalFamilyWebhook and webhook and webhook ~= "" then
+						local payload = {
+							content = "MYTHICAL FAMILY ROLLED! @everyone",
+							embeds = {{
+								title = "Family Roll Success",
+								color = 0xff0000,
+								fields = {{ name = "Information", value = "```\nUser: " .. lp.Name .. "\nFamily: " .. familyString .. "\n```", inline = true }},
+								footer = { text = "Us Suite • " .. DateTime.now():FormatLocalTime("LTS", "en-us") },
+								timestamp = DateTime.now():ToIsoDate()
+							}}
+						}
+						request({ Url = webhook, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = HttpService:JSONEncode(payload) })
+					end
+
+					Library:Notify({ Title = "Us Suite", Description = "Target family rolled: " .. familyString, Time = 5 })
+
+					if getgenv().AutoDeposit then
+						local ok, result = pcall(function() return getRemote:InvokeServer("Family", "Store") end)
+						if ok and result then
+							Library:Notify({ Title = "Us Suite", Description = "Family deposited! Continuing roll...", Time = 3 })
+							getgenv().AutoRoll = true
+							Toggles.AutoRollToggle:SetValue(true)
+						end
+					end
+				end
 			end
 		end)
 	end
