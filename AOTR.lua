@@ -746,6 +746,7 @@ if rewards then
 								"```\n" ..
 								"User: " .. lp.Name .. "\n" ..
 								"Games Played: " .. tostring(gamesPlayed) .. "\n" ..
+								"Difficulty: " .. tostring(workspace:GetAttribute("Difficulty") or "Unknown") .. "\n" ..
 								"Executor: " .. executor ..
 								"\n```",
 							inline = true
