@@ -1245,8 +1245,7 @@ local Window = Library:CreateWindow({
 })
 
 local Tabs = {
-	Main = Window:AddTab("Main", "house"),
-	Upgrades = Window:AddTab("Upgrades", "trending-up"),
+	Main = Window:AddTab("Lobby", "house"),
 	Misc = Window:AddTab("Misc", "boxes"),
 	Menu = Window:AddTab("Main Menu", "home"),
 	Settings = Window:AddTab("Settings", "settings"),
@@ -1255,15 +1254,15 @@ local Tabs = {
 local MainGroup = Tabs.Main:AddLeftGroupbox("Farm")
 local AutoStartGroup = Tabs.Main:AddRightGroupbox("Auto Start")
 
-local UpgradesGroup = Tabs.Upgrades:AddLeftGroupbox("Upgrades")
-local SkillTreeGroup = Tabs.Upgrades:AddRightGroupbox("Skill Tree")
+local UpgradesGroup = Tabs.Main:AddLeftGroupbox("Upgrades")
+local SkillTreeGroup = Tabs.Main:AddRightGroupbox("Skill Tree")
+local PrestigeGroup = Tabs.Main:AddLeftGroupbox("Prestige")
 
 local SlotGroup = Tabs.Menu:AddLeftGroupbox("Slot")
 local FamilyRollGroup = Tabs.Menu:AddRightGroupbox("Family Roll")
 
 local SettingsGroup = Tabs.Misc:AddLeftGroupbox("Settings")
 local WebhookGroup = Tabs.Misc:AddRightGroupbox("Webhook")
-local PrestigeGroup = Tabs.Misc:AddLeftGroupbox("Prestige")
 
 -- ==========================================
 -- MAIN TAB : Farm Groupbox
@@ -2305,6 +2304,46 @@ FamilyRollGroup:AddDropdown("SelectFamilyRarity", {
 
 FamilyRollGroup:AddLabel("Mythical families won't be rolled", true)
 
+FamilyRollGroup:AddButton({
+	Text = "Check Stats",
+	Func = function()
+		task.spawn(function()
+			local pData = getRemote:InvokeServer("Functions", "Settings", "Get")
+			if not pData then
+				Library:Notify({ Title = "Family Stats", Description = "Failed to get data.", Time = 5 })
+				return
+			end
+
+			-- Spins
+			local spins = tostring(pData.Spins or 0)
+
+			-- Current slot family
+			local slotIdx = lp:GetAttribute("Slot") or "A"
+			local slotData = pData.Slots and pData.Slots[slotIdx]
+			local currentFamily = slotData and slotData.Avatar and slotData.Avatar.Family or "Unknown"
+			local totalSpins = slotData and slotData.Total_Spins or 0
+
+			-- Storage families
+			local storageNames = {}
+			if slotData and slotData.Inventory and slotData.Inventory.Families then
+				for _, name in pairs(slotData.Inventory.Families) do
+					table.insert(storageNames, tostring(name))
+				end
+			end
+			local storageStr = #storageNames > 0 and table.concat(storageNames, ", ") or "Empty"
+
+			Library:Notify({
+				Title = "Family Stats",
+				Description =
+					"Current: " .. currentFamily .. "\n" ..
+					"Spins: " .. spins .. "\n" ..
+					"Storage: " .. storageStr,
+				Time = 10
+			})
+		end)
+	end,
+})
+
 -- ==========================================
 -- SETTINGS TAB : Webhook & UI Groupbox
 -- ==========================================
@@ -2375,8 +2414,8 @@ end)
 
 -- Tab visibility per place
 -- Main menu (13379208636): Only Main Menu tab
--- Lobby (14916516914): Main, Upgrades, Misc, Settings
--- Mission: Main, Settings only
+-- Lobby (14916516914): Lobby, Misc, Settings
+-- Mission: Lobby, Settings only
 task.spawn(function()
 	local lastState = nil
 	while not Library.Unloaded do
@@ -2387,7 +2426,6 @@ task.spawn(function()
 		if lastState ~= placeId then
 			lastState = placeId
 			Tabs.Main:SetVisible(not isMainMenu)
-			Tabs.Upgrades:SetVisible(isLobbyPlace)
 			Tabs.Misc:SetVisible(isLobbyPlace)
 			Tabs.Menu:SetVisible(isMainMenu)
 			if isMainMenu then
