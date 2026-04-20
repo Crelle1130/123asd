@@ -2085,7 +2085,8 @@ Toggles.AutoPlayToggle:OnChanged(function()
 	if getgenv().AutoPlay then
 		task.spawn(function()
 			while getgenv().AutoPlay do
-				local titleScreen = INTERFACE:FindFirstChild("Title_Screen")
+				local titleScreen = PlayerGui:FindFirstChild("Interface")
+					and PlayerGui.Interface:FindFirstChild("Title_Screen")
 				if titleScreen and titleScreen.Visible then
 					local playButton = titleScreen:FindFirstChild("Buttons")
 						and titleScreen.Buttons:FindFirstChild("Play")
