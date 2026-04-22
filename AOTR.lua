@@ -747,7 +747,7 @@ if rewards then
 			local payload = {
 					content = hasSpecial and "MYTHICAL DROP! @everyone" or nil,
 					embeds = {{
-						title = "Us Rewards",
+						title = "Rewards",
 						color = hasSpecial and 0xff0000 or 0x2b2d31,
 
 
