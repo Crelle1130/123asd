@@ -2350,6 +2350,77 @@ PrestigeGroup:AddSlider("PrestigeGoldSlider", {
 })
 
 -- ==========================================
+-- LOBBY TAB : Auto Buy Boost Groupbox
+-- ==========================================
+
+local GoldBoostGroup = Tabs.Main:AddLeftGroupbox("Auto Buy Boost")
+
+getgenv().AutoGoldBoost = false
+GoldBoostGroup:AddToggle("AutoGoldBoostToggle", {
+	Text = "Auto Buy Boost",
+	Default = false,
+})
+Toggles.AutoGoldBoostToggle:OnChanged(function()
+	getgenv().AutoGoldBoost = Toggles.AutoGoldBoostToggle.Value
+	if not getgenv().AutoGoldBoost then return end
+	if game.PlaceId ~= 14916516914 then
+		Library:Notify({ Title = "Auto Buy Boost", Description = "Must be in lobby.", Time = 3 })
+		getgenv().AutoGoldBoost = false
+		Toggles.AutoGoldBoostToggle:SetValue(false)
+		return
+	end
+
+	task.spawn(function()
+		while getgenv().AutoGoldBoost do
+			local pData = getRemote:InvokeServer("Functions", "Settings", "Get")
+
+			if pData and pData.Boosts then
+				local boostType = Options.GoldBoostTypeDropdown and Options.GoldBoostTypeDropdown.Value or "2x Gold Boost [1h]"
+
+				-- Determine which boost key to check
+				local boostKey = nil
+				if string.find(boostType, "Gold") then boostKey = "Gold"
+				elseif string.find(boostType, "XP") then boostKey = "XP"
+				elseif string.find(boostType, "Luck") then boostKey = "Luck"
+				end
+
+				local timer = boostKey and (pData.Boosts[boostKey] or 0) or 0
+
+				if timer == 0 then
+					local ok, result = pcall(function()
+						return getRemote:InvokeServer("S_Market", "Buy", boostType, 1, nil)
+					end)
+					if ok and result then
+						Library:Notify({ Title = "Auto Buy Boost", Description = "[✓] Bought " .. boostType, Time = 4 })
+					elseif ok and not result then
+						Library:Notify({ Title = "Auto Buy Boost", Description = "[✗] Failed — not enough gems?", Time = 4 })
+					end
+				else
+					local mins = math.floor(timer / 60)
+					local secs = timer % 60
+					Library:Notify({ Title = "Auto Buy Boost", Description = boostKey .. " boost active: " .. mins .. "m " .. secs .. "s", Time = 3 })
+				end
+			end
+
+			task.wait(30)
+		end
+	end)
+end)
+
+GoldBoostGroup:AddDropdown("GoldBoostTypeDropdown", {
+	Values = {
+		"2x Gold Boost [30m]", "2x Gold Boost [1h]", "2x Gold Boost [2h]",
+		"2x XP Boost [30m]",   "2x XP Boost [1h]",   "2x XP Boost [2h]",
+		"2x Luck Boost [30m]", "2x Luck Boost [1h]", "2x Luck Boost [2h]",
+	},
+	Default = 2,
+	Multi = false,
+	Text = "Boost",
+})
+
+GoldBoostGroup:AddLabel("Buys only if selected boost is not active.")
+
+-- ==========================================
 -- MISC TAB : Family Roll Groupbox
 -- ==========================================
 
@@ -2601,7 +2672,7 @@ local configSubfolder
 
 -- Categorize the UI elements
 local missionFlags = {"AutoKillToggle", "MasteryFarmToggle", "MasteryModeDropdown", "MovementModeDropdown", "FarmOptionsDropdown", "HoverSpeedSlider", "FloatHeightSlider", "AutoReloadToggle", "AutoEscapeToggle", "AutoSkipToggle", "AutoRetryToggle", "AutoChestToggle", "DeleteMapToggle", "DeleteDamageTextToggle", "SoloOnlyToggle", "AutoReturnLobbyToggle"}
-local lobbyFlags = {"AutoStartToggle", "StartTypeDropdown", "MissionMapDropdown", "MissionObjectiveDropdown", "MissionDifficultyDropdown", "RaidMapDropdown", "RaidObjectiveDropdown", "RaidDifficultyDropdown", "ModifiersDropdown", "AutoUpgradeToggle", "AutoEnhanceToggle", "PerkSlotDropdown", "SelectPerksDropdown", "AutoEquipPerkToggle", "PerkPriority1", "PerkPriority2", "PerkPriority3", "AutoSkillTree", "MiddlePathDropdown", "LeftPathDropdown", "RightPathDropdown", "Priority1Dropdown", "Priority2Dropdown", "Priority3Dropdown", "AutoPrestigeToggle", "SelectBoostDropdown", "PrestigeGoldSlider"}
+local lobbyFlags = {"AutoStartToggle", "StartTypeDropdown", "MissionMapDropdown", "MissionObjectiveDropdown", "MissionDifficultyDropdown", "RaidMapDropdown", "RaidObjectiveDropdown", "RaidDifficultyDropdown", "ModifiersDropdown", "AutoUpgradeToggle", "AutoEnhanceToggle", "PerkSlotDropdown", "SelectPerksDropdown", "AutoEquipPerkToggle", "PerkPriority1", "PerkPriority2", "PerkPriority3", "AutoSkillTree", "MiddlePathDropdown", "LeftPathDropdown", "RightPathDropdown", "Priority1Dropdown", "Priority2Dropdown", "Priority3Dropdown", "AutoPrestigeToggle", "SelectBoostDropdown", "PrestigeGoldSlider", "AutoGoldBoostToggle", "GoldBoostTypeDropdown"}
 local menuFlags = {"AutoSelectSlot", "SelectSlotDropdown", "AutoPlayToggle", "AutoRollToggle", "AutoDepositToggle", "SelectFamily", "SelectFamilyRarity"}
 
 local ignoreList = {}
