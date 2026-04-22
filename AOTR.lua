@@ -2383,7 +2383,8 @@ Toggles.AutoBuyBoostToggle:OnChanged(function()
 				end
 
 				local timer = boostKey and (pData.Boosts[boostKey] or 0) or 0
-				local hasItem = pData.Inventory and pData.Inventory.Items and (pData.Inventory.Items[boostType] or 0) > 0
+				local slotIdx = lp:GetAttribute("Slot")
+				local hasItem = pData.Slots and slotIdx and pData.Slots[slotIdx] and pData.Slots[slotIdx].Inventory and pData.Slots[slotIdx].Inventory.Items and (pData.Slots[slotIdx].Inventory.Items[boostType] or 0) > 0
 
 				-- Buy ONLY if timer is 0 AND we don't have the item in inventory
 				if timer == 0 and not hasItem then
@@ -2430,7 +2431,8 @@ Toggles.AutoBoostToggle:OnChanged(function()
 				end
 
 				local timer = boostKey and (pData.Boosts[boostKey] or 0) or 0
-				local hasItem = pData.Inventory and pData.Inventory.Items and (pData.Inventory.Items[boostType] or 0) > 0
+				local slotIdx = lp:GetAttribute("Slot")
+				local hasItem = pData.Slots and slotIdx and pData.Slots[slotIdx] and pData.Slots[slotIdx].Inventory and pData.Slots[slotIdx].Inventory.Items and (pData.Slots[slotIdx].Inventory.Items[boostType] or 0) > 0
 
 				-- Use ONLY if timer is 0 AND we have the item in our inventory
 				if timer == 0 and hasItem then
