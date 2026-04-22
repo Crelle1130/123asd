@@ -2573,7 +2573,18 @@ ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 
 ThemeManager:SetFolder("GabBoboBading/aotr")
-SaveManager:SetFolder("GabBoboBading/aotr")
+
+-- Separate config folder per place so they don't bleed into each other
+local placeId = game.PlaceId
+local configSubfolder
+if placeId == 13379208636 then
+	configSubfolder = "GabBoboBading/aotr/menu"
+elseif placeId == 14916516914 then
+	configSubfolder = "GabBoboBading/aotr/lobby"
+else
+	configSubfolder = "GabBoboBading/aotr/mission"
+end
+SaveManager:SetFolder(configSubfolder)
 
 SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
