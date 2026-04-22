@@ -2350,34 +2350,32 @@ PrestigeGroup:AddSlider("PrestigeGoldSlider", {
 })
 
 -- ==========================================
--- LOBBY TAB : Auto Buy Boost Groupbox
+-- LOBBY TAB : Auto Boost Groupbox
 -- ==========================================
 
-local GoldBoostGroup = Tabs.Main:AddLeftGroupbox("Auto Buy Boost")
+local AutoBoostGroup = Tabs.Main:AddLeftGroupbox("Auto Boost")
 
-getgenv().AutoGoldBoost = false
-GoldBoostGroup:AddToggle("AutoGoldBoostToggle", {
-	Text = "Auto Buy Boost",
+getgenv().AutoBoostEnabled = false
+getgenv().BuyIfEmpty = false
+
+AutoBoostGroup:AddToggle("AutoBuyBoostToggle", {
+	Text = "Buy if Empty (Uses Gems)",
 	Default = false,
 })
-Toggles.AutoGoldBoostToggle:OnChanged(function()
-	getgenv().AutoGoldBoost = Toggles.AutoGoldBoostToggle.Value
-	if not getgenv().AutoGoldBoost then return end
-	if game.PlaceId ~= 14916516914 then
-		Library:Notify({ Title = "Auto Buy Boost", Description = "Must be in lobby.", Time = 3 })
-		getgenv().AutoGoldBoost = false
-		Toggles.AutoGoldBoostToggle:SetValue(false)
-		return
-	end
+
+-- LOGIC 1: THE SUPPLIER (Auto Buy)
+Toggles.AutoBuyBoostToggle:OnChanged(function()
+	getgenv().BuyIfEmpty = Toggles.AutoBuyBoostToggle.Value
+	if not getgenv().BuyIfEmpty then return end
+	
+	if game.PlaceId ~= 14916516914 then return end
 
 	task.spawn(function()
-		while getgenv().AutoGoldBoost do
+		while getgenv().BuyIfEmpty do
 			local pData = getRemote:InvokeServer("Functions", "Settings", "Get")
-
 			if pData and pData.Boosts then
-				local boostType = Options.GoldBoostTypeDropdown and Options.GoldBoostTypeDropdown.Value or "2x Gold Boost [1h]"
-
-				-- Determine which boost key to check
+				local boostType = Options.BoostTypeDropdown and Options.BoostTypeDropdown.Value or "2x Gold Boost [30m]"
+				
 				local boostKey = nil
 				if string.find(boostType, "Gold") then boostKey = "Gold"
 				elseif string.find(boostType, "XP") then boostKey = "XP"
@@ -2385,40 +2383,82 @@ Toggles.AutoGoldBoostToggle:OnChanged(function()
 				end
 
 				local timer = boostKey and (pData.Boosts[boostKey] or 0) or 0
+				local hasItem = pData.Inventory and pData.Inventory.Items and (pData.Inventory.Items[boostType] or 0) > 0
 
-				if timer == 0 then
+				-- Buy ONLY if timer is 0 AND we don't have the item in inventory
+				if timer == 0 and not hasItem then
 					local ok, result = pcall(function()
 						return getRemote:InvokeServer("S_Market", "Buy", boostType, 1, nil)
 					end)
 					if ok and result then
-						Library:Notify({ Title = "Auto Buy Boost", Description = "[✓] Bought " .. boostType, Time = 4 })
-					elseif ok and not result then
-						Library:Notify({ Title = "Auto Buy Boost", Description = "[✗] Failed — not enough gems?", Time = 4 })
+						Library:Notify({ Title = "Auto Buy", Description = "[✓] Bought 1x " .. boostType, Time = 3 })
 					end
-				else
-					local mins = math.floor(timer / 60)
-					local secs = timer % 60
-					Library:Notify({ Title = "Auto Buy Boost", Description = boostKey .. " boost active: " .. mins .. "m " .. secs .. "s", Time = 3 })
 				end
 			end
-
-			task.wait(30)
+			task.wait(3) -- Check every 3 seconds
 		end
 	end)
 end)
 
-GoldBoostGroup:AddDropdown("GoldBoostTypeDropdown", {
+AutoBoostGroup:AddToggle("AutoBoostToggle", {
+	Text = "Auto Use Boost",
+	Default = false,
+})
+
+-- LOGIC 2: THE CONSUMER (Auto Use)
+Toggles.AutoBoostToggle:OnChanged(function()
+	getgenv().AutoBoostEnabled = Toggles.AutoBoostToggle.Value
+	if not getgenv().AutoBoostEnabled then return end
+	
+	if game.PlaceId ~= 14916516914 then
+		Library:Notify({ Title = "Auto Boost", Description = "Must be in lobby.", Time = 3 })
+		getgenv().AutoBoostEnabled = false
+		Toggles.AutoBoostToggle:SetValue(false)
+		return
+	end
+
+	task.spawn(function()
+		while getgenv().AutoBoostEnabled do
+			local pData = getRemote:InvokeServer("Functions", "Settings", "Get")
+			if pData and pData.Boosts then
+				local boostType = Options.BoostTypeDropdown and Options.BoostTypeDropdown.Value or "2x Gold Boost [30m]"
+				
+				local boostKey = nil
+				if string.find(boostType, "Gold") then boostKey = "Gold"
+				elseif string.find(boostType, "XP") then boostKey = "XP"
+				elseif string.find(boostType, "Luck") then boostKey = "Luck"
+				end
+
+				local timer = boostKey and (pData.Boosts[boostKey] or 0) or 0
+				local hasItem = pData.Inventory and pData.Inventory.Items and (pData.Inventory.Items[boostType] or 0) > 0
+
+				-- Use ONLY if timer is 0 AND we have the item in our inventory
+				if timer == 0 and hasItem then
+					local ok, result = pcall(function()
+						return getRemote:InvokeServer("S_Inventory", "Item", boostType)
+					end)
+					if ok and type(result) == "table" then
+						Library:Notify({ Title = "Auto Use", Description = "[✓] Used " .. boostType .. "!", Time = 4 })
+					end
+				end
+			end
+			task.wait(2) -- Check fast so it uses immediately after buying
+		end
+	end)
+end)
+
+AutoBoostGroup:AddDropdown("BoostTypeDropdown", {
 	Values = {
 		"2x Gold Boost [30m]", "2x Gold Boost [1h]", "2x Gold Boost [2h]",
 		"2x XP Boost [30m]",   "2x XP Boost [1h]",   "2x XP Boost [2h]",
 		"2x Luck Boost [30m]", "2x Luck Boost [1h]", "2x Luck Boost [2h]",
 	},
-	Default = 2,
+	Default = 1,
 	Multi = false,
-	Text = "Boost",
+	Text = "Boost Type",
 })
 
-GoldBoostGroup:AddLabel("Buys only if selected boost is not active.")
+AutoBoostGroup:AddLabel("Uses from inventory first.\nBuys from market if empty.")
 
 -- ==========================================
 -- MISC TAB : Family Roll Groupbox
