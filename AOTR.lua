@@ -76,11 +76,11 @@ local familyRaritiesOptions = {
 }
 
 -- Config system for persistent dropdown state
-if not isfolder("./UsSuite") then makefolder("./UsSuite") end
-if not isfolder("./UsSuite/aotr") then makefolder("./UsSuite/aotr") end
+if not isfolder("./GabBoboBading") then makefolder("./GabBoboBading") end
+if not isfolder("./GabBoboBading/aotr") then makefolder("./GabBoboBading/aotr") end
 
-local ConfigFile = "./UsSuite/aotr/dropdown_config.json"
-local returnCounterPath = "./UsSuite/aotr/return_lobby_counter.txt"
+local ConfigFile = "./GabBoboBading/aotr/dropdown_config.json"
+local returnCounterPath = "./GabBoboBading/aotr/return_lobby_counter.txt"
 local HttpService = game:GetService("HttpService")
 
 local function LoadConfig()
@@ -192,7 +192,7 @@ function AutoFarm:Start()
 		while self._running and not checkReady() do
 			if os.clock() - startTime > 10 then -- Notify every 10s if still waiting
 				Library:Notify({
-					Title = "Us Suite",
+					Title = "GabBoboBading",
 					Description = "Still waiting for mission assets to load...",
 					Time = 5
 				})
@@ -626,7 +626,7 @@ local data = {
 	Special = {}
 }
 
-local path = "./UsSuite/aotr/games_played.txt"
+local path = "./GabBoboBading/aotr/games_played.txt"
 if not isfile(path) then writefile(path, "0") end
 local gamesPlayed = tonumber(readfile(path))
 
@@ -637,7 +637,7 @@ if rewards then
 		if not rewards.Visible then return end
 
 	gamesPlayed = gamesPlayed + 1
-		writefile("./UsSuite/aotr/games_played.txt", tostring(gamesPlayed))
+		writefile("./GabBoboBading/aotr/games_played.txt", tostring(gamesPlayed))
 
 		local gamesUntilReturn = tonumber(readfile(returnCounterPath)) or 0
 		local willReturn = false
@@ -779,7 +779,7 @@ if rewards then
 						},
 
 						footer = {
-							text = "Us Suite • " .. DateTime.now():FormatLocalTime("LTS", "en-us")
+							text = "GabBoboBading • " .. DateTime.now():FormatLocalTime("LTS", "en-us")
 						},
 
 						timestamp = DateTime.now():ToIsoDate()
@@ -1063,7 +1063,7 @@ local function roll(targets, rarities)
 						}
 					},
 					footer = {
-						text = "Us Suite • " .. DateTime.now():FormatLocalTime("LTS", "en-us")
+						text = "GabBoboBading • " .. DateTime.now():FormatLocalTime("LTS", "en-us")
 					},
 					timestamp = DateTime.now():ToIsoDate()
 				}}
@@ -1079,7 +1079,7 @@ local function roll(targets, rarities)
 
 		pcall(function()
 			Library:Notify({
-				Title = "Us Suite",
+				Title = "GabBoboBading",
 				Description = "Target family rolled: " .. familyString,
 				Time = 5,
 			})
@@ -1092,7 +1092,7 @@ local function roll(targets, rarities)
 			if success and result then
 				pcall(function()
 					Library:Notify({
-						Title = "Us Suite",
+						Title = "GabBoboBading",
 						Description = "Family deposited! Continuing roll...",
 						Time = 3,
 					})
@@ -1236,7 +1236,7 @@ local Options = Library.Options
 local Toggles = Library.Toggles
 
 local Window = Library:CreateWindow({
-	Title = "Us Suite",
+	Title = "GabBoboBading",
 	Footer = "AOT:R | Freemium",
 	Center = true,
 	AutoShow = true,
@@ -1907,6 +1907,185 @@ UpgradesGroup:AddDropdown("SelectPerksDropdown", {
 UpgradesGroup:AddLabel("Default perk slot is Body")
 
 -- ==========================================
+-- LOBBY TAB : Auto Equip Perk Groupbox
+-- ==========================================
+
+local AutoEquipPerkGroup = Tabs.Main:AddLeftGroupbox("Auto Equip Perk")
+
+-- Perks organized by their designated slot
+local PerksBySlot = {
+	Offense = {
+		"Art of War","Black Flash","Blessed","Butcher","Carnifex",
+		"Cripple","Critical Hunter","Everlasting Flame","Eviscerate",
+		"Flame Rhapsody","Focus","Forceful","Hollow","Kengo",
+		"Lightweight","Lucky","Luminous","Mangle","Mighty",
+		"Mutilate","Peerless Focus","Peerless Strength","Sanctified",
+		"Speedy","Tyrant's Stare","Unparalleled Strength","Warchief",
+		"Warrior","Wind Rhapsody"
+	},
+	Body = {
+		"Enhanced Metabolism","Flawed Release","Founder's Blessing",
+		"Heavenly Restriction","Indefatigable","Maximum Firepower",
+		"Perfect Form","Perfect Soul","Reckless Abandon"
+	},
+	Defense = {
+		"Adaptation","Aegis","Enduring","Font of Vitality","Fortitude",
+		"Hardy","Heightened Vitality","Immortal","Invincible",
+		"Peerless Constitution","Protection","Resilient","Robust",
+		"Safeguard","Stalwart Durability","Tough","Trauma Battery",
+		"Unbreakable","Unyielding"
+	},
+	Support = {
+		"Adrenaline","Courage Catalyst","Exhumation","Experimental Shells",
+		"Explosive Fortune","First Aid","Font of Inspiration",
+		"Fully Stocked","Gear Beginner","Gear Expert","Gear Intermediate",
+		"Gear Master","Munitions Expert","Munitions Master",
+		"Peerless Commander","Siphoning","Sixth Sense","Solo",
+		"Soulfeed","Tatsujin"
+	}
+}
+
+-- Helper: equip a perk by name into a slot
+local function equipPerkByName(perkName, slotName, storage)
+	local uuid = nil
+	for id, info in pairs(storage) do
+		if info.Name == perkName then
+			uuid = id
+			break
+		end
+	end
+	if not uuid then return false, "not found" end
+	pcall(function()
+		getRemote:InvokeServer("S_Equipment", "Perk_State", uuid, "Equip", slotName)
+	end)
+	return true, uuid
+end
+
+-- Build valid entries: only real PerkName [Slot] combinations from PerksBySlot
+local validPerkEntries = {}
+for slotName, perks in pairs(PerksBySlot) do
+	for _, perkName in ipairs(perks) do
+		table.insert(validPerkEntries, perkName .. " [" .. slotName .. "]")
+	end
+end
+table.sort(validPerkEntries)
+
+AutoEquipPerkGroup:AddDropdown("PerkPriority1", {
+	Values = validPerkEntries,
+	Default = {},
+	Multi = true,
+	Text = "Priority 1",
+})
+
+AutoEquipPerkGroup:AddDropdown("PerkPriority2", {
+	Values = validPerkEntries,
+	Default = {},
+	Multi = true,
+	Text = "Priority 2",
+})
+
+AutoEquipPerkGroup:AddDropdown("PerkPriority3", {
+	Values = validPerkEntries,
+	Default = {},
+	Multi = true,
+	Text = "Priority 3",
+})
+
+AutoEquipPerkGroup:AddDivider()
+
+getgenv().AutoEquipPerk = false
+AutoEquipPerkGroup:AddToggle("AutoEquipPerkToggle", {
+	Text = "Auto Equip Perks",
+	Default = false,
+})
+Toggles.AutoEquipPerkToggle:OnChanged(function()
+	getgenv().AutoEquipPerk = Toggles.AutoEquipPerkToggle.Value
+	if not getgenv().AutoEquipPerk then return end
+	if game.PlaceId ~= 14916516914 then
+		Library:Notify({ Title = "Auto Equip Perk", Description = "Must be in lobby.", Time = 3 })
+		getgenv().AutoEquipPerk = false
+		Toggles.AutoEquipPerkToggle:SetValue(false)
+		return
+	end
+
+	task.spawn(function()
+		-- Build priority list once (P1 wins per slot over P2/P3)
+		local function buildToEquip()
+			local toEquip = {}
+			local slotsHandled = {}
+			local function collectPriority(dropId)
+				local val = Options[dropId] and Options[dropId].Value
+				if not val then return end
+				local entries = {}
+				for entry, isActive in pairs(val) do
+					if isActive then table.insert(entries, entry) end
+				end
+				table.sort(entries)
+				for _, entry in ipairs(entries) do
+					local perk, slot = string.match(entry, "^(.+) %[(.+)%]$")
+					if perk and slot and not slotsHandled[slot] then
+						slotsHandled[slot] = true
+						table.insert(toEquip, { perk = perk, slot = slot })
+					end
+				end
+			end
+			collectPriority("PerkPriority1")
+			collectPriority("PerkPriority2")
+			collectPriority("PerkPriority3")
+			return toEquip
+		end
+
+		local toEquip = buildToEquip()
+		if #toEquip == 0 then
+			Library:Notify({ Title = "Auto Equip Perk", Description = "No perks configured.", Time = 3 })
+			getgenv().AutoEquipPerk = false
+			Toggles.AutoEquipPerkToggle:SetValue(false)
+			return
+		end
+
+		Library:Notify({ Title = "Auto Equip Perk", Description = "Watching for " .. #toEquip .. " perk(s)...", Time = 3 })
+
+		-- Persistent loop: keeps running until toggled off
+		while getgenv().AutoEquipPerk do
+			local slotIdx = lp:GetAttribute("Slot")
+			local pData = getRemote:InvokeServer("Functions", "Settings", "Get")
+
+			if pData and pData.Slots and slotIdx and pData.Slots[slotIdx] then
+				local storage = pData.Slots[slotIdx].Perks.Storage
+				local equipped = pData.Slots[slotIdx].Perks.Equipped
+				local justEquipped = {}
+
+				for _, entry in ipairs(toEquip) do
+					-- Check if already equipped correctly
+					local currentId = equipped[entry.slot]
+					local currentName = currentId and storage[currentId] and storage[currentId].Name
+					if currentName == entry.perk then continue end
+
+					-- Check if perk exists in inventory
+					local ok, _ = equipPerkByName(entry.perk, entry.slot, storage)
+					if ok then
+						table.insert(justEquipped, "[✓] " .. entry.slot .. " → " .. entry.perk)
+						task.wait(0.4)
+					end
+				end
+
+				if #justEquipped > 0 then
+					Library:Notify({
+						Title = "Auto Equip Perk",
+						Description = table.concat(justEquipped, "\n"),
+						Time = 4
+					})
+				end
+			end
+
+			task.wait(3) -- Poll every 3 seconds
+		end
+	end)
+end)
+
+AutoEquipPerkGroup:AddLabel("Stays on until toggled off.\nEquips as soon as perk is found.")
+
+-- ==========================================
 -- UPGRADES TAB : Skill Tree Groupbox
 -- ==========================================
 
@@ -2177,7 +2356,7 @@ Toggles.AutoRollToggle:OnChanged(function()
 	if getgenv().AutoRoll then
 		if game.PlaceId ~= 13379208636 then
 			Library:Notify({
-				Title = "Us Suite",
+				Title = "GabBoboBading",
 				Description = "You must be in the lobby to use family roll features.",
 				Time = 3
 			})
@@ -2221,7 +2400,7 @@ Toggles.AutoRollToggle:OnChanged(function()
 				if spinsLeft and spinsLeft <= 0 then
 					getgenv().AutoRoll = false
 					Toggles.AutoRollToggle:SetValue(false)
-					Library:Notify({ Title = "Us Suite", Description = "Out of spins!", Time = 5 })
+					Library:Notify({ Title = "GabBoboBading", Description = "Out of spins!", Time = 5 })
 					break
 				end
 
@@ -2246,19 +2425,19 @@ Toggles.AutoRollToggle:OnChanged(function()
 								title = "Family Roll Success",
 								color = 0xff0000,
 								fields = {{ name = "Information", value = "```\nUser: " .. lp.Name .. "\nFamily: " .. familyString .. "\n```", inline = true }},
-								footer = { text = "Us Suite • " .. DateTime.now():FormatLocalTime("LTS", "en-us") },
+								footer = { text = "GabBoboBading • " .. DateTime.now():FormatLocalTime("LTS", "en-us") },
 								timestamp = DateTime.now():ToIsoDate()
 							}}
 						}
 						request({ Url = webhook, Method = "POST", Headers = { ["Content-Type"] = "application/json" }, Body = HttpService:JSONEncode(payload) })
 					end
 
-					Library:Notify({ Title = "Us Suite", Description = "Target family rolled: " .. familyString, Time = 5 })
+					Library:Notify({ Title = "GabBoboBading", Description = "Target family rolled: " .. familyString, Time = 5 })
 
 					if getgenv().AutoDeposit then
 						local ok, result = pcall(function() return getRemote:InvokeServer("Family", "Store") end)
 						if ok and result then
-							Library:Notify({ Title = "Us Suite", Description = "Family deposited! Continuing roll...", Time = 3 })
+							Library:Notify({ Title = "GabBoboBading", Description = "Family deposited! Continuing roll...", Time = 3 })
 							getgenv().AutoRoll = true
 							Toggles.AutoRollToggle:SetValue(true)
 						end
@@ -2289,7 +2468,7 @@ Options.SelectFamily:OnChanged(function()
 	end
 	if #selected > 0 then
 		Library:Notify({
-			Title = "Us Suite",
+			Title = "GabBoboBading",
 			Description = "Families selected: " .. table.concat(selected, ", "),
 			Time = 2
 		})
@@ -2393,8 +2572,8 @@ Library.ToggleKeybind = Options.MenuKeybind
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 
-ThemeManager:SetFolder("UsSuite/aotr")
-SaveManager:SetFolder("UsSuite/aotr")
+ThemeManager:SetFolder("GabBoboBading/aotr")
+SaveManager:SetFolder("GabBoboBading/aotr")
 
 SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
@@ -2449,7 +2628,7 @@ task.spawn(function()
 	if Toggles.AutoHideToggle.Value then
 		Library:Toggle(false)
 		Library:Notify({
-			Title = "Us Suite",
+			Title = "GabBoboBading",
 			Description = "Auto Hid GUI",
 			Time = 2
 		})
