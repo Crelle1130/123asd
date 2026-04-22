@@ -74,12 +74,24 @@ local familyRaritiesOptions = {
 	"Legendary",
 	"Mythical"
 }
-
 -- Config system for persistent dropdown state
 if not isfolder("./GabBoboBading") then makefolder("./GabBoboBading") end
 if not isfolder("./GabBoboBading/aotr") then makefolder("./GabBoboBading/aotr") end
 
-local ConfigFile = "./GabBoboBading/aotr/dropdown_config.json"
+-- Identify the current place
+local currentEnv = "Mission"
+if game.PlaceId == 14916516914 then
+    currentEnv = "Lobby"
+elseif game.PlaceId == 13379208636 then
+    currentEnv = "MainMenu"
+end
+
+-- Create completely separated sub-folders
+if not isfolder("./GabBoboBading/aotr/" .. currentEnv) then 
+    makefolder("./GabBoboBading/aotr/" .. currentEnv) 
+end
+
+local ConfigFile = "./GabBoboBading/aotr/" .. currentEnv .. "/dropdown_config.json"
 local returnCounterPath = "./GabBoboBading/aotr/return_lobby_counter.txt"
 local HttpService = game:GetService("HttpService")
 
@@ -1261,9 +1273,10 @@ local PrestigeGroup = Tabs.Main:AddLeftGroupbox("Prestige")
 
 local SlotGroup = Tabs.Menu:AddLeftGroupbox("Slot")
 local FamilyRollGroup = Tabs.Menu:AddRightGroupbox("Family Roll")
-
 local SettingsGroup = Tabs.Misc:AddLeftGroupbox("Settings")
-local WebhookGroup = Tabs.Misc:AddRightGroupbox("Webhook")
+
+local MissionWebhookGroup = Tabs.Mission:AddRightGroupbox("Webhook") 
+local MenuWebhookGroup = Tabs.Menu:AddLeftGroupbox("Webhook")
 
 -- ==========================================
 -- MAIN TAB : Farm Groupbox
@@ -2525,10 +2538,10 @@ FamilyRollGroup:AddButton({
 })
 
 -- ==========================================
--- SETTINGS TAB : Webhook & UI Groupbox
+-- WEBHOOKS
 -- ==========================================
 
-WebhookGroup:AddToggle("ToggleRewardWebhook", {
+MissionWebhookGroup:AddToggle("ToggleRewardWebhook", {
 	Text = "Reward Webhook",
 	Default = false,
 })
@@ -2536,7 +2549,16 @@ Toggles.ToggleRewardWebhook:OnChanged(function()
 	getgenv().RewardWebhook = Toggles.ToggleRewardWebhook.Value
 end)
 
-WebhookGroup:AddToggle("ToggleMythicalFamilyWebhook", {
+MissionWebhookGroup:AddInput("WebhookUrl_Mission", {
+	Default = "",
+	Text = "Webhook URL",
+	Placeholder = "https://discord.com/api/webhooks/...",
+})
+Options.WebhookUrl_Mission:OnChanged(function()
+	webhook = Options.WebhookUrl_Mission.Value
+end)
+
+MenuWebhookGroup:AddToggle("ToggleMythicalFamilyWebhook", {
 	Text = "Mythical Family Webhook",
 	Default = false,
 })
@@ -2544,13 +2566,13 @@ Toggles.ToggleMythicalFamilyWebhook:OnChanged(function()
 	getgenv().MythicalFamilyWebhook = Toggles.ToggleMythicalFamilyWebhook.Value
 end)
 
-WebhookGroup:AddInput("WebhookUrl", {
+MenuWebhookGroup:AddInput("WebhookUrl_Menu", {
 	Default = "",
 	Text = "Webhook URL",
 	Placeholder = "https://discord.com/api/webhooks/...",
 })
-Options.WebhookUrl:OnChanged(function()
-	webhook = Options.WebhookUrl.Value
+Options.WebhookUrl_Menu:OnChanged(function()
+	webhook = Options.WebhookUrl_Menu.Value
 end)
 
 SettingsGroup:AddToggle("AutoHideToggle", {
@@ -2573,18 +2595,39 @@ ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 
 ThemeManager:SetFolder("GabBoboBading/aotr")
-
 -- Separate config folder per place so they don't bleed into each other
 local placeId = game.PlaceId
 local configSubfolder
+
+-- Categorize the UI elements
+local missionFlags = {"AutoKillToggle", "MasteryFarmToggle", "MasteryModeDropdown", "MovementModeDropdown", "FarmOptionsDropdown", "HoverSpeedSlider", "FloatHeightSlider", "AutoReloadToggle", "AutoEscapeToggle", "AutoSkipToggle", "AutoRetryToggle", "AutoChestToggle", "DeleteMapToggle", "DeleteDamageTextToggle", "SoloOnlyToggle", "AutoReturnLobbyToggle"}
+local lobbyFlags = {"AutoStartToggle", "StartTypeDropdown", "MissionMapDropdown", "MissionObjectiveDropdown", "MissionDifficultyDropdown", "RaidMapDropdown", "RaidObjectiveDropdown", "RaidDifficultyDropdown", "ModifiersDropdown", "AutoUpgradeToggle", "AutoEnhanceToggle", "PerkSlotDropdown", "SelectPerksDropdown", "AutoEquipPerkToggle", "PerkPriority1", "PerkPriority2", "PerkPriority3", "AutoSkillTree", "MiddlePathDropdown", "LeftPathDropdown", "RightPathDropdown", "Priority1Dropdown", "Priority2Dropdown", "Priority3Dropdown", "AutoPrestigeToggle", "SelectBoostDropdown", "PrestigeGoldSlider"}
+local menuFlags = {"AutoSelectSlot", "SelectSlotDropdown", "AutoPlayToggle", "AutoRollToggle", "AutoDepositToggle", "SelectFamily", "SelectFamilyRarity"}
+
+local ignoreList = {}
+
+-- Tell the script what to ignore based on where you are
 if placeId == 13379208636 then
-	configSubfolder = "GabBoboBading/aotr/menu"
+	configSubfolder = "GabBoboBading/aotr/MainMenu"
+	-- If in Menu, ignore Mission and Lobby settings
+	for _, v in ipairs(missionFlags) do table.insert(ignoreList, v) end
+	for _, v in ipairs(lobbyFlags) do table.insert(ignoreList, v) end
 elseif placeId == 14916516914 then
-	configSubfolder = "GabBoboBading/aotr/lobby"
+	configSubfolder = "GabBoboBading/aotr/Lobby"
+	-- If in Lobby, ignore Mission and Menu settings
+	for _, v in ipairs(missionFlags) do table.insert(ignoreList, v) end
+	for _, v in ipairs(menuFlags) do table.insert(ignoreList, v) end
 else
-	configSubfolder = "GabBoboBading/aotr/mission"
+	configSubfolder = "GabBoboBading/aotr/Mission"
+	-- If in Mission, ignore Lobby and Menu settings
+	for _, v in ipairs(lobbyFlags) do table.insert(ignoreList, v) end
+	for _, v in ipairs(menuFlags) do table.insert(ignoreList, v) end
 end
+
 SaveManager:SetFolder(configSubfolder)
+SaveManager:SetIgnoreIndexes(ignoreList)
+
+
 
 SaveManager:BuildConfigSection(Tabs.Settings)
 ThemeManager:ApplyToTab(Tabs.Settings)
