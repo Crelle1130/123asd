@@ -166,6 +166,24 @@ task.spawn(function()
 	end
 end)
 
+local function TeleportToLobbySafe()
+	local pGui = game:GetService("Players").LocalPlayer:FindFirstChild("PlayerGui")
+	if pGui then
+		local loadingInterface = pGui:FindFirstChild("Loading_Interface")
+		if loadingInterface and loadingInterface:FindFirstChild("Loader") then
+			loadingInterface.Loader.BackgroundTransparency = 0
+			loadingInterface.Loader.Visible = true
+			if loadingInterface.Loader:FindFirstChild("Title") then
+				loadingInterface.Loader.Title.Visible = true
+			end
+		end
+	end
+	task.wait(0.5)
+	pcall(function()
+		TeleportService:Teleport(14916516914, lp)
+	end)
+end
+
 function AutoFarm:Start()
 	if self._running then return end
 	
@@ -650,6 +668,25 @@ if rewards then
 
 	gamesPlayed = gamesPlayed + 1
 		writefile("./GabBoboBading/aotr/games_played.txt", tostring(gamesPlayed))
+
+		-- New: slider-based return after X runs
+		if getgenv().AutoReturnLobbyRun then
+			getgenv()._runCounter = (getgenv()._runCounter or 0) + 1
+			local limit = Options.ReturnAfterRunsSlider and Options.ReturnAfterRunsSlider.Value or 10
+			Library:Notify({ Title = "Run Counter", Description = "Run " .. getgenv()._runCounter .. "/" .. limit, Time = 3 })
+			if getgenv()._runCounter >= limit then
+				getgenv()._runCounter = 0
+				-- Stop auto start so pipeline can re-run on lobby
+				getgenv().AutoStart = false
+				pcall(function() Toggles.AutoStartToggle:SetValue(false) end)
+				task.spawn(function()
+					getRemote:InvokeServer("Functions", "Teleport", "Lobby")
+				end)
+				task.wait(0.5)
+				TeleportService:Teleport(14916516914, lp)
+				return
+			end
+		end
 
 		local gamesUntilReturn = tonumber(readfile(returnCounterPath)) or 0
 		local willReturn = false
@@ -1265,11 +1302,13 @@ local Tabs = {
 }
 
 local MainGroup = Tabs.Mission:AddLeftGroupbox("Farm")
+local MissionRightGroup = Tabs.Mission:AddRightGroupbox("Actions")
 local AutoStartGroup = Tabs.Main:AddRightGroupbox("Auto Start")
 
 local UpgradesGroup = Tabs.Main:AddLeftGroupbox("Upgrades")
 local SkillTreeGroup = Tabs.Main:AddRightGroupbox("Skill Tree")
 local PrestigeGroup = Tabs.Main:AddLeftGroupbox("Prestige")
+local AutoQuestGroup = Tabs.Main:AddRightGroupbox("Auto Quest")
 
 local SlotGroup = Tabs.Menu:AddLeftGroupbox("Slot")
 local FamilyRollGroup = Tabs.Menu:AddRightGroupbox("Family Roll")
@@ -2213,6 +2252,10 @@ SkillTreeGroup:AddDropdown("Priority3Dropdown", {
 -- MISC TAB : Slot Groupbox
 -- ==========================================
 
+-- ==========================================
+-- MISC TAB : Slot Groupbox
+-- ==========================================
+
 SlotGroup:AddToggle("AutoSelectSlot", {
 	Text = "Auto Select Slot",
 	Default = false,
@@ -2220,46 +2263,27 @@ SlotGroup:AddToggle("AutoSelectSlot", {
 Toggles.AutoSelectSlot:OnChanged(function()
 	getgenv().AutoSlot = Toggles.AutoSelectSlot.Value
 	if getgenv().AutoSlot then
-		local selectedSlot = Options.SelectSlotDropdown.Value
-		local slotLetter = string.sub(selectedSlot, -1) -- "A", "B", or "C"
-		
 		task.spawn(function()
-			-- Step 1: Use UI clicker, but safely break the loop the second the Slot menu hides
-			repeat
-				local titleScreen = INTERFACE:FindFirstChild("Title_Screen")
-				local slots = titleScreen and titleScreen:FindFirstChild("Slots")
-				
-				if titleScreen and titleScreen.Visible and slots and slots.Visible then
-					local slotFolder = slots:FindFirstChild(slotLetter)
-					local slotButton = slotFolder and slotFolder:FindFirstChild("Select_" .. slotLetter)
-					if slotButton and slotButton.Visible then
-						UseButton(slotButton)
-					end
+			while getgenv().AutoSlot do
+				if game.PlaceId ~= 13379208636 then break end
+
+				local selectedSlot = Options.SelectSlotDropdown.Value
+				local slotLetter = string.sub(selectedSlot, -1)
+				local lp = game:GetService("Players").LocalPlayer
+
+				if lp:GetAttribute("Slot") ~= slotLetter then
+					lp:SetAttribute("Slot", slotLetter)
+					Library:Notify({
+						Title = "Auto Slot",
+						Description = "Bypassed UI. Forced Slot " .. slotLetter .. "!",
+						Time = 2
+					})
 				end
-				task.wait(0.5)
-			until not getgenv().AutoSlot or not (INTERFACE:FindFirstChild("Title_Screen") and INTERFACE.Title_Screen:FindFirstChild("Slots") and INTERFACE.Title_Screen.Slots.Visible)
-
-			-- Step 2: Stop right here if Auto Play is off (stay on Main Menu for rolling)
-			if not getgenv().AutoSlot or not getgenv().AutoPlay then return end
-
-			-- Step 3: If Auto Play is ON, use the UI clicker to press the Play button
-			task.wait(0.5)
-			local titleScreen = INTERFACE:FindFirstChild("Title_Screen")
-			local playButton = titleScreen and titleScreen:FindFirstChild("Buttons")
-				and titleScreen.Buttons:FindFirstChild("Play")
-				and titleScreen.Buttons.Play:FindFirstChild("Interact")
-				
-			if playButton then
-				UseButton(playButton)
-				task.wait(2)
+				task.wait(1)
 			end
-			
-			getgenv().AutoStart = true
-			pcall(function() Toggles.AutoStartToggle:SetValue(true) end)
 		end)
 	end
 end)
-
 
 SlotGroup:AddDropdown("SelectSlotDropdown", {
 	Values = {"Slot A", "Slot B", "Slot C"},
@@ -2277,18 +2301,18 @@ Toggles.AutoPlayToggle:OnChanged(function()
 	if getgenv().AutoPlay then
 		task.spawn(function()
 			while getgenv().AutoPlay do
-				local titleScreen = PlayerGui:FindFirstChild("Interface")
-					and PlayerGui.Interface:FindFirstChild("Title_Screen")
-				if titleScreen and titleScreen.Visible then
-					local playButton = titleScreen:FindFirstChild("Buttons")
-						and titleScreen.Buttons:FindFirstChild("Play")
-						and titleScreen.Buttons.Play:FindFirstChild("Interact")
-					if playButton and playButton.Visible then
-						UseButton(playButton)
-						task.wait(2)
-						getgenv().AutoStart = true
-						pcall(function() Toggles.AutoStartToggle:SetValue(true) end)
-					end
+				if game.PlaceId ~= 13379208636 then break end
+
+				local lp = game:GetService("Players").LocalPlayer
+				local selectedSlot = Options.SelectSlotDropdown.Value
+				local slotLetter = string.sub(selectedSlot, -1)
+
+				if lp:GetAttribute("Slot") == slotLetter then
+					Library:Notify({ Title = "Auto Play", Description = "Teleporting to Lobby...", Time = 3 })
+					getgenv().AutoStart = true
+					pcall(function() Toggles.AutoStartToggle:SetValue(true) end)
+					TeleportToLobbySafe()
+					break
 				end
 				task.wait(0.5)
 			end
@@ -2312,10 +2336,21 @@ Toggles.AutoPrestigeToggle:OnChanged(function()
 			local gold = pData.Slots[slotIdx].Currency.Gold
 			local requiredGold = Options.PrestigeGoldSlider.Value * 1000000
 
-			if gold < requiredGold then return end
+			if gold < requiredGold then
+				Library:Notify({ Title = "Auto Prestige", Description = "Not enough gold (" .. gold .. "/" .. requiredGold .. ")", Time = 4 })
+				getgenv().AutoPrestige = false
+				Toggles.AutoPrestigeToggle:SetValue(false)
+				return
+			end
 
 			while getgenv().AutoPrestige do
-				for _, Memory in ipairs(Talents) do
+				-- Build priority talent list
+				local guessList = {}
+				local selectedPriorities = Options.PrestigeTalentPriority and Options.PrestigeTalentPriority.Value or {}
+				for _, talent in ipairs(Talents) do if selectedPriorities[talent] then table.insert(guessList, talent) end end
+				for _, talent in ipairs(Talents) do if not selectedPriorities[talent] then table.insert(guessList, talent) end end
+
+				for _, Memory in ipairs(guessList) do
 					if not getgenv().AutoPrestige then break end
 					local success = getRemote:InvokeServer("S_Equipment", "Prestige", {Boosts = Options.SelectBoostDropdown.Value, Talents = Memory})
 					if success then
@@ -2341,6 +2376,13 @@ PrestigeGroup:AddDropdown("SelectBoostDropdown", {
 	Text = "Select Boost",
 })
 
+PrestigeGroup:AddDropdown("PrestigeTalentPriority", {
+	Values = Talents,
+	Default = {},
+	Multi = true,
+	Text = "Talent Priority",
+})
+
 PrestigeGroup:AddSlider("PrestigeGoldSlider", {
 	Text = "Prestige Gold (in millions)",
 	Default = 0,
@@ -2348,6 +2390,93 @@ PrestigeGroup:AddSlider("PrestigeGoldSlider", {
 	Max = 500,
 	Rounding = 0,
 })
+
+-- ==========================================
+-- LOBBY TAB : Auto Quest Groupbox
+-- ==========================================
+
+local QuestAmounts = {
+	["Novice Adventurer"]=10, ["Seasoned Operative"]=25, ["Master of Missions"]=50, ["Elite Taskmaster"]=100, ["Legendary Quester"]=250, ["Completionist"]=500,
+	["Rookie Raider"]=10, ["Raid Veteran"]=25, ["Raid Commander"]=50, ["Raid Overlord"]=100, ["Raid Warlord"]=250, ["Raid Conqueror"]=500,
+	["Precise Striker"]=5, ["Critical Sniper"]=10, ["Devastating Precision"]=25, ["Critical Master"]=50, ["Critical Legend"]=100, ["Critical Demigod"]=250,
+	["Novice Wrecker"]=400, ["Demolition Expert"]=1600, ["Destruction Maestro"]=5500, ["Damage Dynamo"]=20000, ["Cataclysmic Force"]=70000, ["Devastation Virtuoso"]=150000,
+	["Penny Pincher"]=25000, ["Wealth Accumulator"]=100000, ["Treasure Hunter"]=400000, ["Fortune Hoarder"]=1000000, ["Money Magician"]=5000000, ["Currency Emperor"]=25000000,
+	["Guardian Angel"]=5, ["Rescuer Extraordinaire"]=10, ["Lifesaver Pro"]=25, ["Savior Supreme"]=50, ["Player's Champion"]=100, ["Ultimate Protector"]=250,
+	["Eye of the Storm"]=75, ["Leg Lacerator"]=150, ["Arm Annihilator"]=400, ["Titan Torturer"]=750, ["Titan Annihilator"]=1250, ["Titan's Nightmare"]=2500,
+	["Titan Hunter"]=100, ["Titan Slayer"]=250, ["Titan Executioner"]=500, ["Titan Butcher"]=1000, ["Titan Dominator"]=2500, ["Titan Conqueror"]=10000,
+	["Rookie Adventurer"]=10, ["Seasoned Warrior"]=25, ["Master of Experience"]=50, ["Legendary Ascendant"]=75, ["Divine Prestige"]=100, ["Ultimate Champion"]=125,
+	["Prestige Aspirant"]=1, ["Prestige Challenger"]=2, ["Prestige Enthusiast"]=3, ["Prestige Expert"]=4,
+	["Casual Explorer"]=5, ["Dedicated Adventurer"]=10, ["Seasoned Gamer"]=25, ["Endurance Champion"]=50, ["Timeless Immortal"]=100, ["Infinite Voyager"]=250,
+	["Shifting Apprentice"]=10, ["Shifting Adept"]=25, ["Shifting Expert"]=50, ["Shifting Master"]=100, ["Shifting Guru"]=125, ["Shifting Virtuoso"]=250,
+	["Skill Novice"]=100, ["Skill Practitioner"]=250, ["Skill Expert"]=500, ["Skill Master"]=1000, ["Skill Virtuoso"]=2500, ["Skill Prodigy"]=5000,
+	["Team Player"]=10, ["Teamwork Enthusiast"]=25, ["Cooperative Expert"]=50, ["Teamwork Specialist"]=75, ["Teamwork Virtuoso"]=150, ["Teamwork Maestro"]=250,
+	["Towers"]=3, ["Escort"]=1, ["Ice Burst Stones"]=3, ["Retrieve Missing Supplies"]=3, ["Defend Missing Supplies"]=1
+}
+
+getgenv().AutoClaimQuest = false
+
+AutoQuestGroup:AddToggle("AutoClaimQuestToggle", {
+	Text = "Auto Claim Quests",
+	Default = false,
+})
+
+Toggles.AutoClaimQuestToggle:OnChanged(function()
+	getgenv().AutoClaimQuest = Toggles.AutoClaimQuestToggle.Value
+	if not getgenv().AutoClaimQuest then return end
+
+	if game.PlaceId ~= 14916516914 then
+		Library:Notify({ Title = "Auto Quest", Description = "Must be in lobby.", Time = 3 })
+		getgenv().AutoClaimQuest = false
+		Toggles.AutoClaimQuestToggle:SetValue(false)
+		return
+	end
+
+	task.spawn(function()
+		while getgenv().AutoClaimQuest do
+			local ok, pData = pcall(function() return getRemote:InvokeServer("Functions", "Settings", "Get") end)
+			local currentSlot = lp:GetAttribute("Slot")
+
+			if ok and pData and currentSlot then
+				local slotData = pData.Slots and pData.Slots[currentSlot]
+				if slotData and slotData.Quests then
+					local function processCategory(catName, questsTbl)
+						if type(questsTbl) ~= "table" then return end
+						for questId, qInfo in pairs(questsTbl) do
+							if type(qInfo) == "table" then
+								local tag = qInfo.Tag or tostring(questId)
+								local current = qInfo.Current or 0
+								local amount = qInfo.Amount
+								local rewarded = qInfo.Rewarded
+								if rewarded == nil or rewarded == false then
+									local targetAmount = type(amount) == "number" and amount or QuestAmounts[tag]
+									if targetAmount and current >= targetAmount then
+										local claimOk, result = pcall(function()
+											return getRemote:InvokeServer("Functions", "Quest", tag, catName)
+										end)
+										if claimOk and type(result) == "table" then
+											Library:Notify({ Title = "Auto Quest", Description = "[✓] Claimed: " .. tag, Time = 3 })
+										end
+										task.wait(0.5)
+									end
+								end
+							end
+						end
+					end
+
+					local standardCats = {"Daily", "Weekly", "Main", "Side", "Spears"}
+					for _, cat in ipairs(standardCats) do
+						if slotData.Quests[cat] then
+							processCategory(cat, slotData.Quests[cat])
+						end
+					end
+				end
+			end
+			task.wait(10)
+		end
+	end)
+end)
+
+AutoQuestGroup:AddLabel("Automatically claims finished quests.")
 
 -- ==========================================
 -- LOBBY TAB : Auto Boost Groupbox
@@ -2654,6 +2783,48 @@ FamilyRollGroup:AddButton({
 -- WEBHOOKS
 -- ==========================================
 
+MissionRightGroup:AddButton({
+	Text = "Teleport to Lobby",
+	Func = function()
+		Library:Notify({ Title = "Teleporting", Description = "Heading to lobby...", Time = 3 })
+		local loadingInterface = PlayerGui:FindFirstChild("Loading_Interface")
+		if loadingInterface and loadingInterface:FindFirstChild("Loader") then
+			loadingInterface.Loader.BackgroundTransparency = 0
+			loadingInterface.Loader.Visible = true
+			if loadingInterface.Loader:FindFirstChild("Title") then
+				loadingInterface.Loader.Title.Visible = true
+			end
+		end
+		task.wait(0.5)
+		pcall(function() TeleportService:Teleport(14916516914, lp) end)
+	end
+})
+
+MissionRightGroup:AddToggle("AutoReturnLobbyRunToggle", {
+	Text = "Return to Lobby After X Runs",
+	Default = false,
+})
+
+MissionRightGroup:AddSlider("ReturnAfterRunsSlider", {
+	Text = "Return After Runs",
+	Default = 10,
+	Min = 1,
+	Max = 50,
+	Rounding = 0,
+})
+
+MissionRightGroup:AddLabel("Teleports to lobby after X runs.")
+
+getgenv().AutoReturnLobbyRun = false
+getgenv()._runCounter = 0
+
+Toggles.AutoReturnLobbyRunToggle:OnChanged(function()
+	getgenv().AutoReturnLobbyRun = Toggles.AutoReturnLobbyRunToggle.Value
+	if not getgenv().AutoReturnLobbyRun then
+		getgenv()._runCounter = 0
+	end
+end)
+
 MissionWebhookGroup:AddToggle("ToggleRewardWebhook", {
 	Text = "Reward Webhook",
 	Default = false,
@@ -2713,8 +2884,8 @@ local placeId = game.PlaceId
 local configSubfolder
 
 -- Categorize the UI elements
-local missionFlags = {"AutoKillToggle", "MasteryFarmToggle", "MasteryModeDropdown", "MovementModeDropdown", "FarmOptionsDropdown", "HoverSpeedSlider", "FloatHeightSlider", "AutoReloadToggle", "AutoEscapeToggle", "AutoSkipToggle", "AutoRetryToggle", "AutoChestToggle", "DeleteMapToggle", "DeleteDamageTextToggle", "SoloOnlyToggle", "AutoReturnLobbyToggle"}
-local lobbyFlags = {"AutoStartToggle", "StartTypeDropdown", "MissionMapDropdown", "MissionObjectiveDropdown", "MissionDifficultyDropdown", "RaidMapDropdown", "RaidObjectiveDropdown", "RaidDifficultyDropdown", "ModifiersDropdown", "AutoUpgradeToggle", "AutoEnhanceToggle", "PerkSlotDropdown", "SelectPerksDropdown", "AutoEquipPerkToggle", "PerkPriority1", "PerkPriority2", "PerkPriority3", "AutoSkillTree", "MiddlePathDropdown", "LeftPathDropdown", "RightPathDropdown", "Priority1Dropdown", "Priority2Dropdown", "Priority3Dropdown", "AutoPrestigeToggle", "SelectBoostDropdown", "PrestigeGoldSlider", "AutoGoldBoostToggle", "GoldBoostTypeDropdown"}
+local missionFlags = {"AutoKillToggle", "MasteryFarmToggle", "MasteryModeDropdown", "MovementModeDropdown", "FarmOptionsDropdown", "HoverSpeedSlider", "FloatHeightSlider", "AutoReloadToggle", "AutoEscapeToggle", "AutoSkipToggle", "AutoRetryToggle", "AutoChestToggle", "DeleteMapToggle", "DeleteDamageTextToggle", "SoloOnlyToggle", "AutoReturnLobbyToggle", "AutoReturnLobbyRunToggle", "ReturnAfterRunsSlider"}
+local lobbyFlags = {"AutoStartToggle", "StartTypeDropdown", "MissionMapDropdown", "MissionObjectiveDropdown", "MissionDifficultyDropdown", "RaidMapDropdown", "RaidObjectiveDropdown", "RaidDifficultyDropdown", "ModifiersDropdown", "AutoUpgradeToggle", "AutoEnhanceToggle", "PerkSlotDropdown", "SelectPerksDropdown", "AutoEquipPerkToggle", "PerkPriority1", "PerkPriority2", "PerkPriority3", "AutoSkillTree", "MiddlePathDropdown", "LeftPathDropdown", "RightPathDropdown", "Priority1Dropdown", "Priority2Dropdown", "Priority3Dropdown", "AutoPrestigeToggle", "SelectBoostDropdown", "PrestigeTalentPriority", "PrestigeGoldSlider", "AutoGoldBoostToggle", "GoldBoostTypeDropdown", "AutoBuyBoostToggle", "AutoBoostToggle", "BoostTypeDropdown", "AutoClaimQuestToggle"}
 local menuFlags = {"AutoSelectSlot", "SelectSlotDropdown", "AutoPlayToggle", "AutoRollToggle", "AutoDepositToggle", "SelectFamily", "SelectFamilyRarity"}
 
 local ignoreList = {}
@@ -2756,6 +2927,109 @@ task.spawn(function()
 	while not Library.Unloaded do
 		local success, err = pcall(ExecuteImmediateAutomation)
 		task.wait(0.5)
+	end
+end)
+
+-- ==========================================
+-- LOBBY PIPELINE AUTOMATION
+-- Runs each step in order if its toggle is on
+-- ==========================================
+task.spawn(function()
+	if game.PlaceId ~= 14916516914 then return end
+	task.wait(3) -- Wait for script to fully load
+
+	Library:Notify({ Title = "Pipeline", Description = "Starting lobby pipeline...", Time = 3 })
+
+	local function waitForToggle(flagName, timeoutSecs)
+		local start = os.clock()
+		while getgenv()[flagName] do
+			if os.clock() - start > (timeoutSecs or 60) then break end
+			task.wait(1)
+		end
+	end
+
+	-- Step 1: Auto Upgrade Gear
+	if Toggles.AutoUpgradeToggle and Toggles.AutoUpgradeToggle.Value then
+		Library:Notify({ Title = "Pipeline [1/6]", Description = "Upgrading gear...", Time = 3 })
+		Toggles.AutoUpgradeToggle:SetValue(true)
+		waitForToggle("AutoUpgrade", 30)
+		Library:Notify({ Title = "Pipeline [1/6]", Description = "[✓] Gear upgrade done.", Time = 2 })
+		task.wait(1)
+	else
+		Library:Notify({ Title = "Pipeline [1/6]", Description = "[—] Gear upgrade skipped.", Time = 2 })
+	end
+
+	-- Step 2: Auto Skill Tree
+	if Toggles.AutoSkillTree and Toggles.AutoSkillTree.Value then
+		Library:Notify({ Title = "Pipeline [2/6]", Description = "Upgrading skill tree...", Time = 3 })
+		Toggles.AutoSkillTree:SetValue(true)
+		waitForToggle("AutoSkillTree", 30)
+		Library:Notify({ Title = "Pipeline [2/6]", Description = "[✓] Skill tree done.", Time = 2 })
+		task.wait(1)
+	else
+		Library:Notify({ Title = "Pipeline [2/6]", Description = "[—] Skill tree skipped.", Time = 2 })
+	end
+
+	-- Step 3: Auto Equip Perks
+	if Toggles.AutoEquipPerkToggle and Toggles.AutoEquipPerkToggle.Value then
+		Library:Notify({ Title = "Pipeline [3/6]", Description = "Equipping perks...", Time = 3 })
+		Toggles.AutoEquipPerkToggle:SetValue(true)
+		waitForToggle("AutoEquipPerk", 30)
+		Library:Notify({ Title = "Pipeline [3/6]", Description = "[✓] Perks equipped.", Time = 2 })
+		task.wait(1)
+	else
+		Library:Notify({ Title = "Pipeline [3/6]", Description = "[—] Perk equip skipped.", Time = 2 })
+	end
+
+	-- Step 4: Auto Boost (buy if needed, use if needed)
+	if Toggles.AutoBuyBoostToggle and Toggles.AutoBuyBoostToggle.Value then
+		Library:Notify({ Title = "Pipeline [4/6]", Description = "Checking boost — buying if empty...", Time = 3 })
+		Toggles.AutoBuyBoostToggle:SetValue(true)
+		task.wait(5)
+		Library:Notify({ Title = "Pipeline [4/6]", Description = "[✓] Boost buy check done.", Time = 2 })
+	else
+		Library:Notify({ Title = "Pipeline [4/6]", Description = "[—] Auto Buy Boost skipped.", Time = 2 })
+	end
+
+	if Toggles.AutoBoostToggle and Toggles.AutoBoostToggle.Value then
+		Library:Notify({ Title = "Pipeline [4/6]", Description = "Using boost if available...", Time = 3 })
+		Toggles.AutoBoostToggle:SetValue(true)
+		task.wait(5)
+		Library:Notify({ Title = "Pipeline [4/6]", Description = "[✓] Boost use check done.", Time = 2 })
+	else
+		Library:Notify({ Title = "Pipeline [4/6]", Description = "[—] Auto Use Boost skipped.", Time = 2 })
+	end
+
+	-- Step 5: Auto Prestige (check gold requirement)
+	if Toggles.AutoPrestigeToggle and Toggles.AutoPrestigeToggle.Value then
+		Library:Notify({ Title = "Pipeline [5/6]", Description = "Checking prestige gold...", Time = 3 })
+		local pData = getRemote:InvokeServer("Functions", "Settings", "Get")
+		local slotIdx = lp:GetAttribute("Slot")
+		if pData and pData.Slots and slotIdx and pData.Slots[slotIdx] then
+			local gold = pData.Slots[slotIdx].Currency.Gold
+			local required = Options.PrestigeGoldSlider and Options.PrestigeGoldSlider.Value * 1000000 or 0
+			if gold >= required then
+				Library:Notify({ Title = "Pipeline [5/6]", Description = "Gold OK (" .. gold .. "). Prestiging...", Time = 3 })
+				Toggles.AutoPrestigeToggle:SetValue(true)
+				waitForToggle("AutoPrestige", 60)
+				Library:Notify({ Title = "Pipeline [5/6]", Description = "[✓] Prestige done.", Time = 2 })
+				task.wait(1)
+			else
+				Library:Notify({ Title = "Pipeline [5/6]", Description = "[✗] Not enough gold (" .. gold .. "/" .. required .. ")", Time = 4 })
+			end
+		else
+			Library:Notify({ Title = "Pipeline [5/6]", Description = "[✗] Failed to fetch player data.", Time = 3 })
+		end
+	else
+		Library:Notify({ Title = "Pipeline [5/6]", Description = "[—] Auto Prestige skipped.", Time = 2 })
+	end
+
+	-- Step 6: Start Mission
+	if Toggles.AutoStartToggle and Toggles.AutoStartToggle.Value then
+		Library:Notify({ Title = "Pipeline [6/6]", Description = "[✓] All done! Starting mission...", Time = 4 })
+		Toggles.AutoStartToggle:SetValue(true)
+	else
+		Library:Notify({ Title = "Pipeline [6/6]", Description = "[—] Auto Start skipped. Pipeline complete.", Time = 3 })
 	end
 end)
 
