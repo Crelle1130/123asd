@@ -1921,7 +1921,7 @@ local TooltipLabel = New("TextLabel", {
     AutomaticSize = Enum.AutomaticSize.Y,
     BackgroundColor3 = "BackgroundColor",
     TextSize = 14,
-    TextWrapped = false,
+    TextWrapped = true,
     Visible = false,
     ZIndex = 20,
     Parent = ScreenGui,
@@ -6264,7 +6264,7 @@ function Library:Notify(...)
             TextSize = 15,
             TextXAlignment = Enum.TextXAlignment.Left,
             TextYAlignment = Enum.TextYAlignment.Center,
-            TextWrapped = true,
+            TextWrapped = false,
             Parent = TitleContainer,
         })
     end
@@ -6277,7 +6277,7 @@ function Library:Notify(...)
             Text = Data.Description,
             TextSize = 14,
             TextXAlignment = Enum.TextXAlignment.Left,
-            TextWrapped = true,
+            TextWrapped = false,
             Parent = TextContainer,
         })
     end
