@@ -361,11 +361,11 @@ local Templates = {
         ShowSidebar = false,
         AutoResizeHeight = false,
 
-        WindowWidth = 450,
+        WindowWidth = 380,
         WindowHeight = 275,
 
-        ContentWidth = 450,
-        SidebarWidth = 250,
+        ContentWidth = 380,
+        SidebarWidth = 200,
     },
     Toggle = {
         Text = "Toggle",
