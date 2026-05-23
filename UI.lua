@@ -6512,7 +6512,7 @@ function Library:CreateWindow(WindowInfo)
             })
         )
         local MainWindowScale = New("UIScale", {
-    Scale = Library.IsMobile and 0.6 or 1,
+    Scale = Library.IsMobile and 0.8 or 1,
     Parent = MainFrame,
 })
 table.insert(Library.Scales, MainWindowScale)
@@ -9483,5 +9483,5 @@ Library:GiveSignal(Teams.ChildAdded:Connect(OnTeamChange))
 Library:GiveSignal(Teams.ChildRemoved:Connect(OnTeamChange))
 
 getgenv().Library = Library
-Library:SetDPIScale(0.6)
+Library:SetDPIScale(0.7)
 return Library
