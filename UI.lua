@@ -1007,7 +1007,7 @@ function Library:UpdateColorsUsingRegistry()
 end
 
 function Library:SetDPIScale(DPIScale: number)
-    Library.DPIScale = DPIScale / 100
+    Library.DPIScale = DPIScale
     Library.MinSize = Library.OriginalMinSize * Library.DPIScale
 
 	for _, UIScale in Library.Scales do
@@ -9483,4 +9483,5 @@ Library:GiveSignal(Teams.ChildAdded:Connect(OnTeamChange))
 Library:GiveSignal(Teams.ChildRemoved:Connect(OnTeamChange))
 
 getgenv().Library = Library
+Library:SetDPIScale(0.6)
 return Library
