@@ -6511,12 +6511,12 @@ function Library:CreateWindow(WindowInfo)
                 Parent = MainFrame,
             })
         )
-        table.insert(
-            Library.Scales,
-            New("UIScale", {
-                Parent = MainFrame,
-            })
-        )
+        local MainWindowScale = New("UIScale", {
+    Scale = Library.IsMobile and 0.6 or 1,
+    Parent = MainFrame,
+})
+table.insert(Library.Scales, MainWindowScale)
+Library.ScalesOffset[MainWindowScale] = Library.IsMobile and 0.4 or 0
         Library:AddOutline(MainFrame)
         Library:MakeLine(MainFrame, {
             Position = UDim2.fromOffset(0, 48),
