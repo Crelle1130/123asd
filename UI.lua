@@ -213,7 +213,7 @@ local Library = {
 
     OriginalMinSize = Vector2.new(380, 360),
     MinSize = Vector2.new(380, 360),
-    DPIScale = 0.85,
+    DPIScale = 0.6,
     CornerRadius = 4,
     CornerRadiusDropdown = false, -- Temporary
 
