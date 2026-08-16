@@ -162,7 +162,7 @@ local function doClean()
 			end
 		end
 	end
-	hm:UnequipTools()
+	if not firePending then hm:UnequipTools() end  -- don't yank the extinguisher mid-fire
 end
 
 local function doChef()
