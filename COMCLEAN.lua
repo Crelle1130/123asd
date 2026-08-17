@@ -85,7 +85,9 @@ task.spawn(function()
 	end
 end)
 
+local t0 = os.clock()
 while true do
+	if os.clock() - t0 > 15 then warn("[Diag] STOPPED after 15s") break end
 	task.wait(0.5)
 	local b = ob()
 	if b then
