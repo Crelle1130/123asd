@@ -1,12 +1,13 @@
--- COMCLEAN.lua — clean messes + glass WITHOUT equipping tools (Delta-safe, Lua 5.1)
--- Fires the CleaningSystem ProximityPrompts directly. No EquipTool / UnequipTools anywhere.
+-- COMCLEAN.lua — clean messes + glass WITHOUT equipping tools and WITHOUT teleporting near PCs
+-- Fires the CleaningSystem ProximityPrompts at range (MaxActivationDistance=50).
+-- No EquipTool / UnequipTools. No CFrame teleports near the mess (that proximity is what
+-- makes the game auto-equip the fire extinguisher).
 repeat task.wait() until game:IsLoaded()
 if getgenv().COMCLEAN_LOADED then return end
 getgenv().COMCLEAN_LOADED = true
 
 local P = game:GetService("Players")
 local LP = P.LocalPlayer
-local VU = game:GetService("VirtualUser")
 
 local function ob()
 	local bases = workspace:FindFirstChild("Bases")
@@ -19,39 +20,6 @@ local function ob()
 	return nil
 end
 
-local function getPos(p)
-	if not p then return nil end
-	local o = p.Parent
-	if o and o:IsA("BasePart") then return o.Position end
-	local m = o and (o:IsA("Model") and o or (o.Parent and o.Parent:IsA("Model") and o.Parent))
-	if m then
-		local ok, v = pcall(function() return m:GetPivot().Position end)
-		if ok then return v end
-	end
-	return nil
-end
-
-local function firePrompt(pr)
-	if not pr then return end
-	pcall(function() pr.HoldDuration = 0 end)
-	pcall(function() pr.RequiresLineOfSight = false end)
-	pcall(function() pr.MaxActivationDistance = 50 end)
-	if fireproximityprompt then
-		pcall(fireproximityprompt, pr)
-	end
-end
-
-local function tpNear(pos)
-	local c = LP.Character
-	if not c then return end
-	local hrp = c:FindFirstChild("HumanoidRootPart")
-	if not hrp then return end
-	hrp.CFrame = CFrame.lookAt(Vector3.new(pos.X, pos.Y + 2.5, pos.Z + 2.5), Vector3.new(pos.X, pos.Y, pos.Z))
-	task.wait(0.15)
-	local hm = c:FindFirstChildWhichIsA("Humanoid")
-	if hm then hm.Sit = false end
-end
-
 -- diagnostic watchdog: log whenever the extinguisher enters the hand
 local extSeen = false
 task.spawn(function()
@@ -62,22 +30,7 @@ task.spawn(function()
 		local isExt = t and (t.Name:lower():match("extinguish") or t.Name:lower():match("^fire"))
 		if isExt and not extSeen then
 			extSeen = true
-			local b = ob()
-			local fires = {}
-			local bases = workspace:FindFirstChild("Bases")
-			if bases then
-				for _, bx in ipairs(bases:GetChildren()) do
-					local pcs = bx:FindFirstChild("PCS")
-					if pcs then
-						for _, pc in ipairs(pcs:GetChildren()) do
-							if pc:IsA("Model") and pc:GetAttribute("FireActive") == true then
-								table.insert(fires, tostring(bx:GetAttribute("OwnerUserId")) .. "/" .. pc.Name)
-							end
-						end
-					end
-				end
-			end
-			warn("[Diag] EXTINGUISHER in hand! fires=", table.concat(fires, ","), "ownBase=", tostring(b ~= nil))
+			warn("[Diag] EXTINGUISHER in hand!")
 		elseif not isExt and extSeen then
 			extSeen = false
 			warn("[Diag] EXTINGUISHER left hand")
@@ -90,26 +43,23 @@ while true do
 	if os.clock() - t0 > 15 then warn("[Diag] STOPPED after 15s") break end
 	task.wait(0.5)
 	local b = ob()
+	if not b then warn("[Clean] no base found") end
 	if b then
 		local cs = b:FindFirstChild("CleaningSystem")
 		if cs then
 			local am = cs:FindFirstChild("ActiveMesses")
 			if am then
 				for _, p in ipairs(am:GetDescendants()) do
-					if p:IsA("ProximityPrompt") then
-						warn("[Clean] prompt", p.Name, "enabled=", tostring(p.Enabled), "toolAttr=", tostring(p:GetAttribute("RequiredToolAttribute")), "toolName=", tostring(p:GetAttribute("RequiredToolName")))
-						if p.Enabled then
-							local pos = getPos(p)
-							if pos then
-								tpNear(pos)
-								for _ = 1, 5 do
-									firePrompt(p)
-									VU:ClickButton1(Vector2.new())
-									task.wait(0.35)
-								end
-								task.wait(0.2)
-							end
+					if p:IsA("ProximityPrompt") and p.Enabled then
+						pcall(function() p.HoldDuration = 0 end)
+						pcall(function() p.RequiresLineOfSight = false end)
+						pcall(function() p.MaxActivationDistance = 50 end)
+						warn("[Clean] firing at range:", p.Name, "tool=", tostring(p:GetAttribute("RequiredToolAttribute")))
+						for _ = 1, 5 do
+							if fireproximityprompt then pcall(fireproximityprompt, p) end
+							task.wait(0.35)
 						end
+						task.wait(0.2)
 					end
 				end
 			end
