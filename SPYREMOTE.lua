@@ -1,5 +1,5 @@
--- SPYREMOTE.lua — log every FireServer / InvokeServer call (Delta-safe, pure Lua 5.1)
-repeat wait() until game:IsLoaded()
+-- SPYREMOTE.lua — log every FireServer / InvokeServer call (Delta-safe, no file I/O)
+repeat task.wait() until game:IsLoaded()
 print("[Spy] remote spy loading...")
 
 local function fmt(v, depth)
@@ -35,7 +35,6 @@ local function fmt(v, depth)
 	return tostring(v)
 end
 
-local logBuf = {}
 local function logCall(kind, inst, ...)
 	local n = select("#", ...)
 	local parts = {}
@@ -43,13 +42,7 @@ local function logCall(kind, inst, ...)
 		local ok, val = pcall(function() return fmt((select(i, ...))) end)
 		table.insert(parts, (ok and val) or "?")
 	end
-	local msg = "[Spy] " .. kind .. " " .. inst:GetFullName() .. " :: " .. table.concat(parts, " | ")
-	print(msg)
-	table.insert(logBuf, msg)
-	if #logBuf >= 50 then
-		pcall(writefile, "SPYREMOTE_LOG.txt", table.concat(logBuf, "\n") .. "\n")
-		logBuf = {}
-	end
+	print("[Spy] " .. kind .. " " .. inst:GetFullName() .. " :: " .. table.concat(parts, " | "))
 end
 
 local scanned = {}
@@ -85,26 +78,23 @@ local function scan(container)
 	print("[Spy] hooked", count, "remotes in", container.Name)
 end
 
-scan(game:GetService("ReplicatedStorage"))
-scan(workspace)
-scan(game:GetService("Players"))
+local okMain = xpcall(function()
+	scan(game:GetService("ReplicatedStorage"))
+	scan(workspace)
+	scan(game:GetService("Players"))
 
-game:GetService("ReplicatedStorage").DescendantAdded:Connect(function(v)
-	pcall(hook, v)
+	game:GetService("ReplicatedStorage").DescendantAdded:Connect(function(v)
+		pcall(hook, v)
+	end)
+	workspace.DescendantAdded:Connect(function(v)
+		pcall(hook, v)
+	end)
+
+	print("[Spy] ready — do your actions now")
+end, function(e)
+	print("[Spy] ERROR:", tostring(e))
+	local okTb, tb = pcall(debug.traceback)
+	if okTb then print(tb) end
 end)
-workspace.DescendantAdded:Connect(function(v)
-	pcall(hook, v)
-end)
 
-coroutine.wrap(function()
-	while true do
-		wait(5)
-		if #logBuf > 0 then
-			local oldTxt = pcall(readfile, "SPYREMOTE_LOG.txt") and readfile("SPYREMOTE_LOG.txt") or ""
-			pcall(writefile, "SPYREMOTE_LOG.txt", oldTxt .. table.concat(logBuf, "\n") .. "\n")
-			logBuf = {}
-		end
-	end
-end)()
-
-print("[Spy] ready — do your actions now. Log also saved to SPYREMOTE_LOG.txt")
+if not okMain then print("[Spy] main blocked") end
