@@ -52,6 +52,39 @@ local function tpNear(pos)
 	if hm then hm.Sit = false end
 end
 
+-- diagnostic watchdog: log whenever the extinguisher enters the hand
+local extSeen = false
+task.spawn(function()
+	while true do
+		task.wait(0.2)
+		local c = LP.Character
+		local t = c and c:FindFirstChildOfClass("Tool")
+		local isExt = t and (t.Name:lower():match("extinguish") or t.Name:lower():match("^fire"))
+		if isExt and not extSeen then
+			extSeen = true
+			local b = ob()
+			local fires = {}
+			local bases = workspace:FindFirstChild("Bases")
+			if bases then
+				for _, bx in ipairs(bases:GetChildren()) do
+					local pcs = bx:FindFirstChild("PCS")
+					if pcs then
+						for _, pc in ipairs(pcs:GetChildren()) do
+							if pc:IsA("Model") and pc:GetAttribute("FireActive") == true then
+								table.insert(fires, tostring(bx:GetAttribute("OwnerUserId")) .. "/" .. pc.Name)
+							end
+						end
+					end
+				end
+			end
+			warn("[Diag] EXTINGUISHER in hand! fires=", table.concat(fires, ","), "ownBase=", tostring(b ~= nil))
+		elseif not isExt and extSeen then
+			extSeen = false
+			warn("[Diag] EXTINGUISHER left hand")
+		end
+	end
+end)
+
 while true do
 	task.wait(0.5)
 	local b = ob()
@@ -61,16 +94,19 @@ while true do
 			local am = cs:FindFirstChild("ActiveMesses")
 			if am then
 				for _, p in ipairs(am:GetDescendants()) do
-					if p:IsA("ProximityPrompt") and p.Enabled then
-						local pos = getPos(p)
-						if pos then
-							tpNear(pos)
-							for _ = 1, 5 do
-								firePrompt(p)
-								VU:ClickButton1(Vector2.new())
-								task.wait(0.35)
+					if p:IsA("ProximityPrompt") then
+						warn("[Clean] prompt", p.Name, "enabled=", tostring(p.Enabled), "toolAttr=", tostring(p:GetAttribute("RequiredToolAttribute")), "toolName=", tostring(p:GetAttribute("RequiredToolName")))
+						if p.Enabled then
+							local pos = getPos(p)
+							if pos then
+								tpNear(pos)
+								for _ = 1, 5 do
+									firePrompt(p)
+									VU:ClickButton1(Vector2.new())
+									task.wait(0.35)
+								end
+								task.wait(0.2)
 							end
-							task.wait(0.2)
 						end
 					end
 				end
