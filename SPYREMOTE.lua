@@ -1,8 +1,6 @@
--- SPYREMOTE.lua — log every FireServer / InvokeServer call (Delta-safe, Lua 5.1)
--- Run this, then manually do actions (clean / extinguish / use tools) or run scripts.
--- Everything the client sends to the server gets printed to the console.
-repeat task.wait() until game:IsLoaded()
-print("[Spy] remote spy loaded")
+-- SPYREMOTE.lua — log every FireServer / InvokeServer call (Delta-safe, pure Lua 5.1)
+repeat wait() until game:IsLoaded()
+print("[Spy] remote spy loading...")
 
 local function fmt(v, depth)
 	depth = depth or 0
@@ -29,9 +27,6 @@ local function fmt(v, depth)
 				local ok2, full = pcall(function() return v:GetFullName() end)
 				if ok2 then return full end
 				return "Instance"
-			end
-			if t == "CFrame" or t == "Vector3" or t == "Color3" or t == "UDim2" then
-				return t .. "(" .. tostring(v) .. ")"
 			end
 			return t
 		end
@@ -90,26 +85,26 @@ local function scan(container)
 	print("[Spy] hooked", count, "remotes in", container.Name)
 end
 
-local RS = game:GetService("ReplicatedStorage")
-scan(RS)
+scan(game:GetService("ReplicatedStorage"))
 scan(workspace)
 scan(game:GetService("Players"))
 
-RS.DescendantAdded:Connect(function(v)
+game:GetService("ReplicatedStorage").DescendantAdded:Connect(function(v)
 	pcall(hook, v)
 end)
 workspace.DescendantAdded:Connect(function(v)
 	pcall(hook, v)
 end)
 
-task.spawn(function()
+coroutine.wrap(function()
 	while true do
-		task.wait(5)
+		wait(5)
 		if #logBuf > 0 then
-			pcall(writefile, "SPYREMOTE_LOG.txt", (pcall(readfile, "SPYREMOTE_LOG.txt") and readfile("SPYREMOTE_LOG.txt") or "") .. table.concat(logBuf, "\n") .. "\n")
+			local oldTxt = pcall(readfile, "SPYREMOTE_LOG.txt") and readfile("SPYREMOTE_LOG.txt") or ""
+			pcall(writefile, "SPYREMOTE_LOG.txt", oldTxt .. table.concat(logBuf, "\n") .. "\n")
 			logBuf = {}
 		end
 	end
-end)
+end)()
 
 print("[Spy] ready — do your actions now. Log also saved to SPYREMOTE_LOG.txt")
