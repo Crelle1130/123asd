@@ -62,7 +62,7 @@ end
 local function findTargetEgg()
     local data = C_Data.GetData()
     local eggs = data.onlyData.enemyEggItemByGid
-    local char = game.Players.languid_haydn.Character
+    local char = game.Players.LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then return nil, nil end
 
@@ -101,7 +101,7 @@ local function doSteal()
     if isStealing then return false end
     isStealing = true
 
-    local char = game.Players.languid_haydn.Character
+    local char = game.Players.LocalPlayer.Character
     local hrp = char and char:FindFirstChild("HumanoidRootPart")
     if not hrp then isStealing = false return false end
 
